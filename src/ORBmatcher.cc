@@ -49,6 +49,10 @@ namespace ORB_SLAM3
         for(size_t iMP=0; iMP<vpMapPoints.size(); iMP++)
         {
             MapPoint* pMP = vpMapPoints[iMP];
+
+            if(pMP->mnLastFrameSeen == F.mnId)
+                continue;
+
             if(!pMP->mbTrackInView && !pMP->mbTrackInViewR)
                 continue;
 
