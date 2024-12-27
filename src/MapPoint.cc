@@ -569,7 +569,7 @@ void MapPoint::UpdateMap(Map* pMap)
     mpMap = pMap;
 }
 
-void MapPoint::PreSave(set<KeyFrame*>& spKF,set<MapPoint*>& spMP)
+bool MapPoint::PreSave(set<KeyFrame*>& spKF,set<MapPoint*>& spMP)
 {
     mBackupReplacedId = -1;
     if(mpReplaced && spMP.find(mpReplaced) != spMP.end())
@@ -578,7 +578,8 @@ void MapPoint::PreSave(set<KeyFrame*>& spKF,set<MapPoint*>& spMP)
     mBackupObservationsId1.clear();
     mBackupObservationsId2.clear();
     // Save the id and position in each KF who view it
-    for(std::map<KeyFrame*,std::tuple<int,int> >::const_iterator it = mObservations.begin(), end = mObservations.end(); it != end; ++it)
+    std::map<KeyFrame*, std::tuple<int,int>> obs = GetObservations();
+    for(std::map<KeyFrame*,std::tuple<int,int> >::const_iterator it = obs.begin(), end = obs.end(); it != end; ++it)
     {
         KeyFrame* pKFi = it->first;
         if(spKF.find(pKFi) != spKF.end())
@@ -597,6 +598,7 @@ void MapPoint::PreSave(set<KeyFrame*>& spKF,set<MapPoint*>& spMP)
     {
         mBackupRefKFId = mpRefKF->mnId;
     }
+    return mbBad;
 }
 
 void MapPoint::PostLoad(map<long unsigned int, KeyFrame*>& mpKFid, map<long unsigned int, MapPoint*>& mpMPid)
