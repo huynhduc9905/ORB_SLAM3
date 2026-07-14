@@ -33,14 +33,43 @@
 #include <boost/archive/xml_iarchive.hpp>
 #include <boost/archive/xml_oarchive.hpp>
 #include <stdexcept>
+#include <atomic>
 
 namespace ORB_SLAM3
 {
 
+#ifdef ORB_SLAM3_SNAPSHOT_TESTING
+namespace
+{
+std::atomic<int> constructionFailpoint{
+    static_cast<int>(System::ConstructionFailpoint::Disabled)};
+
+void ThrowIfConstructionFailpoint(System::ConstructionFailpoint failpoint)
+{
+    if(constructionFailpoint.load() == static_cast<int>(failpoint))
+    {
+        throw std::runtime_error("ORB System construction failpoint");
+    }
+}
+}
+
+void System::SetConstructionFailpointForTesting(ConstructionFailpoint failpoint)
+{
+    constructionFailpoint.store(static_cast<int>(failpoint));
+}
+
+void System::ClearConstructionFailpointForTesting()
+{
+    constructionFailpoint.store(static_cast<int>(ConstructionFailpoint::Disabled));
+}
+#endif
+
 Verbose::eLevel Verbose::th = Verbose::VERBOSITY_NORMAL;
 
 System::System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor,
-               const bool bUseViewer, const int initFr, const string &strSequence):
+               const bool bUseViewer, const int initFr, const string &strSequence)
+try
+:
     mSensor(sensor), mpVocabulary(nullptr), mpKeyFrameDatabase(nullptr), mpAtlas(nullptr),
     mpTracker(nullptr), mpLocalMapper(nullptr), mpLoopCloser(nullptr),
 #ifndef ORB_SLAM3_HEADLESS
@@ -209,6 +238,9 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     mpLocalMapper = new LocalMapping(this, mpAtlas, mSensor==MONOCULAR || mSensor==IMU_MONOCULAR,
                                      mSensor==IMU_MONOCULAR || mSensor==IMU_STEREO || mSensor==IMU_RGBD, strSequence);
     mptLocalMapping = new thread(&ORB_SLAM3::LocalMapping::Run,mpLocalMapper);
+#ifdef ORB_SLAM3_SNAPSHOT_TESTING
+    ThrowIfConstructionFailpoint(ConstructionFailpoint::AfterLocalMappingStart);
+#endif
     mpLocalMapper->mInitFr = initFr;
     if(settings_)
         mpLocalMapper->mThFarPoints = settings_->thFarPoints();
@@ -226,6 +258,9 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     // mSensor!=MONOCULAR && mSensor!=IMU_MONOCULAR
     mpLoopCloser = new LoopClosing(mpAtlas, mpKeyFrameDatabase, mpVocabulary, mSensor!=MONOCULAR, activeLC); // mSensor!=MONOCULAR);
     mptLoopClosing = new thread(&ORB_SLAM3::LoopClosing::Run, mpLoopCloser);
+#ifdef ORB_SLAM3_SNAPSHOT_TESTING
+    ThrowIfConstructionFailpoint(ConstructionFailpoint::AfterLoopClosingStart);
+#endif
 
     //Set pointers between threads
     mpTracker->SetLocalMapper(mpLocalMapper);
@@ -250,28 +285,84 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
         mpViewer->both = mpFrameDrawer->both;
     }
 
+#ifdef ORB_SLAM3_SNAPSHOT_TESTING
+    ThrowIfConstructionFailpoint(ConstructionFailpoint::BeforeCompletion);
+#endif
+
     // Fix verbosity
     Verbose::SetTh(Verbose::VERBOSITY_QUIET);
 
 }
+catch(...)
+{
+    Cleanup(true);
+    throw;
+}
 
 System::~System()
 {
-    if(!isShutDown())
-        Shutdown();
+    Cleanup(true);
+}
+
+void System::Cleanup(bool destroyResources) noexcept
+{
+    {
+        unique_lock<mutex> lock(mMutexReset);
+        mbShutDown = true;
+    }
+
+    if(mpLocalMapper)
+        mpLocalMapper->RequestFinish();
+    if(mpLoopCloser)
+        mpLoopCloser->RequestFinish();
+#ifndef ORB_SLAM3_HEADLESS
+    if(mpViewer)
+        mpViewer->RequestFinish();
+#endif
+
+    const auto joinAndDelete = [](thread*& worker) {
+        if(!worker)
+            return;
+        if(worker->joinable() && worker->get_id() != this_thread::get_id())
+            worker->join();
+        if(!worker->joinable())
+        {
+            delete worker;
+            worker = nullptr;
+        }
+    };
+
+    joinAndDelete(mptLocalMapping);
+    joinAndDelete(mptLoopClosing);
+#ifndef ORB_SLAM3_HEADLESS
+    joinAndDelete(mptViewer);
+#endif
+
+    if(!destroyResources)
+        return;
 
 #ifndef ORB_SLAM3_HEADLESS
     delete mpViewer;
+    mpViewer = nullptr;
 #endif
     delete mpLoopCloser;
+    mpLoopCloser = nullptr;
     delete mpLocalMapper;
+    mpLocalMapper = nullptr;
     delete mpTracker;
+    mpTracker = nullptr;
     delete mpMapDrawer;
+    mpMapDrawer = nullptr;
     delete mpFrameDrawer;
+    mpFrameDrawer = nullptr;
     delete mpAtlas;
+    mpAtlas = nullptr;
     delete mpKeyFrameDatabase;
+    mpKeyFrameDatabase = nullptr;
     delete mpVocabulary;
+    mpVocabulary = nullptr;
     delete settings_;
+    settings_ = nullptr;
 }
 
 Sophus::SE3f System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timestamp, const vector<IMU::Point>& vImuMeas, string filename)
@@ -636,37 +727,7 @@ void System::Shutdown()
 
     cout << "Shutdown" << endl;
 
-    mpLocalMapper->RequestFinish();
-    mpLoopCloser->RequestFinish();
-#ifndef ORB_SLAM3_HEADLESS
-    if(mpViewer)
-    {
-        mpViewer->RequestFinish();
-    }
-#endif
-
-    // Wait until all threads have effectively stopped before System members
-    // (and the objects they reference) are destroyed.
-    if(mptLocalMapping)
-    {
-        mptLocalMapping->join();
-        delete mptLocalMapping;
-        mptLocalMapping = nullptr;
-    }
-    if(mptLoopClosing)
-    {
-        mptLoopClosing->join();
-        delete mptLoopClosing;
-        mptLoopClosing = nullptr;
-    }
-#ifndef ORB_SLAM3_HEADLESS
-    if(mptViewer)
-    {
-        mptViewer->join();
-        delete mptViewer;
-        mptViewer = nullptr;
-    }
-#endif
+    Cleanup(false);
 
     // Threads have stopped; retain the live SLAM objects until the caller has
     // finished any post-shutdown trajectory queries.

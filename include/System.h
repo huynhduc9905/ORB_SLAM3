@@ -85,6 +85,18 @@ class Settings;
 class System
 {
 public:
+#ifdef ORB_SLAM3_SNAPSHOT_TESTING
+    enum class ConstructionFailpoint {
+        Disabled,
+        AfterLocalMappingStart,
+        AfterLoopClosingStart,
+        BeforeCompletion,
+    };
+
+    static void SetConstructionFailpointForTesting(ConstructionFailpoint failpoint);
+    static void ClearConstructionFailpointForTesting();
+#endif
+
     // Input sensor
     enum eSensor{
         MONOCULAR=0,
@@ -200,6 +212,8 @@ public:
 
 private:
 
+    void Cleanup(bool destroyResources) noexcept;
+
     void SaveAtlas(int type);
     bool LoadAtlas(int type);
     void BeginSnapshotEpoch(SnapshotGraphState::EpochKind kind);
@@ -272,7 +286,7 @@ private:
 
     string mStrVocabularyFilePath;
 
-    Settings* settings_;
+    Settings* settings_{nullptr};
 };
 
 }// namespace ORB_SLAM
