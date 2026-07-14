@@ -27,6 +27,7 @@
 #include <opencv2/core/eigen.hpp>
 
 #include <iostream>
+#include <stdexcept>
 
 using namespace std;
 
@@ -38,7 +39,7 @@ namespace ORB_SLAM3 {
         if(node.empty()){
             if(required){
                 std::cerr << name << " required parameter does not exist, aborting..." << std::endl;
-                exit(-1);
+                throw std::runtime_error(name + " required parameter is missing");
             }
             else{
                 std::cerr << name << " optional parameter does not exist..." << std::endl;
@@ -48,7 +49,7 @@ namespace ORB_SLAM3 {
         }
         else if(!node.isReal()){
             std::cerr << name << " parameter must be a real number, aborting..." << std::endl;
-            exit(-1);
+            throw std::runtime_error(name + " must be a real number");
         }
         else{
             found = true;
@@ -62,7 +63,7 @@ namespace ORB_SLAM3 {
         if(node.empty()){
             if(required){
                 std::cerr << name << " required parameter does not exist, aborting..." << std::endl;
-                exit(-1);
+                throw std::runtime_error(name + " required parameter is missing");
             }
             else{
                 std::cerr << name << " optional parameter does not exist..." << std::endl;
@@ -72,7 +73,7 @@ namespace ORB_SLAM3 {
         }
         else if(!node.isInt()){
             std::cerr << name << " parameter must be an integer number, aborting..." << std::endl;
-            exit(-1);
+            throw std::runtime_error(name + " must be an integer");
         }
         else{
             found = true;
@@ -86,7 +87,7 @@ namespace ORB_SLAM3 {
         if(node.empty()){
             if(required){
                 std::cerr << name << " required parameter does not exist, aborting..." << std::endl;
-                exit(-1);
+                throw std::runtime_error(name + " required parameter is missing");
             }
             else{
                 std::cerr << name << " optional parameter does not exist..." << std::endl;
@@ -96,7 +97,7 @@ namespace ORB_SLAM3 {
         }
         else if(!node.isString()){
             std::cerr << name << " parameter must be a string, aborting..." << std::endl;
-            exit(-1);
+            throw std::runtime_error(name + " must be a string");
         }
         else{
             found = true;
@@ -110,7 +111,7 @@ namespace ORB_SLAM3 {
         if(node.empty()){
             if(required){
                 std::cerr << name << " required parameter does not exist, aborting..." << std::endl;
-                exit(-1);
+                throw std::runtime_error(name + " required parameter is missing");
             }
             else{
                 std::cerr << name << " optional parameter does not exist..." << std::endl;
@@ -134,7 +135,7 @@ namespace ORB_SLAM3 {
             cerr << "[ERROR]: could not open configuration file at: " << configFile << endl;
             cerr << "Aborting..." << endl;
 
-            exit(-1);
+            throw std::runtime_error("could not open ORB settings file: " + configFile);
         }
         else{
             cout << "Loading settings from " << configFile << endl;
@@ -269,7 +270,7 @@ namespace ORB_SLAM3 {
         }
         else{
             cerr << "Error: " << cameraModel << " not known" << endl;
-            exit(-1);
+            throw std::runtime_error("unknown ORB camera model: " + cameraModel);
         }
     }
 

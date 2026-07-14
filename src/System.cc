@@ -32,6 +32,7 @@
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/xml_iarchive.hpp>
 #include <boost/archive/xml_oarchive.hpp>
+#include <stdexcept>
 
 namespace ORB_SLAM3
 {
@@ -71,7 +72,7 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     if(!fsSettings.isOpened())
     {
        cerr << "Failed to open settings file at: " << strSettingsFile << endl;
-       exit(-1);
+       throw std::runtime_error("failed to open ORB settings: " + strSettingsFile);
     }
 
     cv::FileNode node = fsSettings["File.version"];
@@ -120,7 +121,7 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
         {
             cerr << "Wrong path to vocabulary. " << endl;
             cerr << "Falied to open at: " << strVocFile << endl;
-            exit(-1);
+            throw std::runtime_error("failed to open ORB vocabulary: " + strVocFile);
         }
         cout << "Vocabulary loaded!" << endl << endl;
 
@@ -142,7 +143,7 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
         {
             cerr << "Wrong path to vocabulary. " << endl;
             cerr << "Falied to open at: " << strVocFile << endl;
-            exit(-1);
+            throw std::runtime_error("failed to open ORB vocabulary: " + strVocFile);
         }
         cout << "Vocabulary loaded!" << endl << endl;
 
@@ -159,7 +160,7 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
         if(!isRead)
         {
             cout << "Error to load the file, please try with other session file or vocabulary file" << endl;
-            exit(-1);
+            throw std::runtime_error("failed to load ORB atlas");
         }
         //mpKeyFrameDatabase = new KeyFrameDatabase(*mpVocabulary);
 
@@ -249,7 +250,7 @@ Sophus::SE3f System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, 
     if(mSensor!=STEREO && mSensor!=IMU_STEREO)
     {
         cerr << "ERROR: you called TrackStereo but input sensor was not set to Stereo nor Stereo-Inertial." << endl;
-        exit(-1);
+        throw std::runtime_error("TrackStereo called for a non-stereo sensor");
     }
 
     cv::Mat imLeftToFeed, imRightToFeed;
@@ -358,7 +359,7 @@ Sophus::SE3f System::TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const
     if(mSensor!=RGBD  && mSensor!=IMU_RGBD)
     {
         cerr << "ERROR: you called TrackRGBD but input sensor was not set to RGBD." << endl;
-        exit(-1);
+        throw std::runtime_error("TrackRGBD called for a non-RGBD sensor");
     }
 
     cv::Mat imToFeed = im.clone();
@@ -436,7 +437,7 @@ Sophus::SE3f System::TrackMonocular(const cv::Mat &im, const double &timestamp, 
     if(mSensor!=MONOCULAR && mSensor!=IMU_MONOCULAR)
     {
         cerr << "ERROR: you called TrackMonocular but input sensor was not set to Monocular nor Monocular-Inertial." << endl;
-        exit(-1);
+        throw std::runtime_error("TrackMonocular called for a non-monocular sensor");
     }
 
     cv::Mat imToFeed = im.clone();

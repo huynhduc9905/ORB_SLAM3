@@ -28,6 +28,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdexcept>
 #include <string>
 
 namespace ORB_SLAM3 {
@@ -129,7 +130,7 @@ namespace ORB_SLAM3 {
             if(node.empty()){
                 if(required){
                     std::cerr << name << " required parameter does not exist, aborting..." << std::endl;
-                    exit(-1);
+                    throw std::runtime_error(name + " required parameter is missing");
                 }
                 else{
                     std::cerr << name << " optional parameter does not exist..." << std::endl;
