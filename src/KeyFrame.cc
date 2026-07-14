@@ -26,6 +26,25 @@ namespace ORB_SLAM3
 
 long unsigned int KeyFrame::nNextId=0;
 
+#ifdef ORB_SLAM3_SNAPSHOT_TESTING
+namespace
+{
+std::mutex bad_keyframe_map_lookup_test_hook_mutex;
+std::function<void()> bad_keyframe_map_lookup_test_hook;
+
+void InvokeBadKeyframeMapLookupTestHook()
+{
+    std::function<void()> hook;
+    {
+        unique_lock<mutex> lock(bad_keyframe_map_lookup_test_hook_mutex);
+        hook = bad_keyframe_map_lookup_test_hook;
+    }
+    if(hook)
+        hook();
+}
+}
+#endif
+
 KeyFrame::KeyFrame():
         mnFrameId(0),  mTimeStamp(0), mnGridCols(FRAME_GRID_COLS), mnGridRows(FRAME_GRID_ROWS),
         mfGridElementWidthInv(0), mfGridElementHeightInv(0),
@@ -455,6 +474,7 @@ void KeyFrame::UpdateConnections(bool upParent)
         lWs.push_front(vPairs[i].first);
     }
 
+    const long unsigned int init_kf_id = mpMap->GetInitKFid();
     {
         unique_lock<mutex> lockCon(mMutexConnections);
 
@@ -463,7 +483,7 @@ void KeyFrame::UpdateConnections(bool upParent)
         mvOrderedWeights = vector<int>(lWs.begin(), lWs.end());
 
 
-        if(mbFirstConnection && mnId!=mpMap->GetInitKFid())
+        if(mbFirstConnection && mnId!=init_kf_id)
         {
             mpParent = mvpOrderedConnectedKeyFrames.front();
             mpParent->AddChild(this);
@@ -572,9 +592,13 @@ void KeyFrame::SetErase()
 
 void KeyFrame::SetBadFlag()
 {
+#ifdef ORB_SLAM3_SNAPSHOT_TESTING
+    InvokeBadKeyframeMapLookupTestHook();
+#endif
+    const long unsigned int init_kf_id = mpMap->GetInitKFid();
     {
         unique_lock<mutex> lock(mMutexConnections);
-        if(mnId==mpMap->GetInitKFid())
+        if(mnId==init_kf_id)
         {
             return;
         }
@@ -677,6 +701,14 @@ void KeyFrame::SetBadFlag()
     mpMap->EraseKeyFrame(this);
     mpKeyFrameDB->erase(this);
 }
+
+#ifdef ORB_SLAM3_SNAPSHOT_TESTING
+void KeyFrame::SetBadKeyframeMapLookupTestHook(std::function<void()> hook)
+{
+    unique_lock<mutex> lock(bad_keyframe_map_lookup_test_hook_mutex);
+    bad_keyframe_map_lookup_test_hook = std::move(hook);
+}
+#endif
 
 bool KeyFrame::isBad()
 {

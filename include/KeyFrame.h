@@ -33,6 +33,9 @@
 #include "SerializationUtils.h"
 
 #include <mutex>
+#ifdef ORB_SLAM3_SNAPSHOT_TESTING
+#include <functional>
+#endif
 
 #include <boost/serialization/base_object.hpp>
 #include <boost/serialization/vector.hpp>
@@ -271,6 +274,13 @@ public:
     // Set/check bad flag
     void SetBadFlag();
     bool isBad();
+#ifdef ORB_SLAM3_SNAPSHOT_TESTING
+    static void SetBadKeyframeMapLookupTestHook(std::function<void()> hook);
+    void SetKeyFrameDatabaseForTesting(KeyFrameDatabase* pKFDB)
+    {
+        mpKeyFrameDB = pKFDB;
+    }
+#endif
 
     // Compute Scene Depth (q=2 median). Used in monocular.
     float ComputeSceneMedianDepth(const int q);

@@ -26,6 +26,25 @@ namespace ORB_SLAM3
 
 long unsigned int Map::nNextId=0;
 
+#ifdef ORB_SLAM3_SNAPSHOT_TESTING
+namespace
+{
+std::mutex snapshot_capture_test_hook_mutex;
+std::function<void()> snapshot_capture_test_hook;
+
+void InvokeSnapshotCaptureTestHook()
+{
+    std::function<void()> hook;
+    {
+        unique_lock<mutex> lock(snapshot_capture_test_hook_mutex);
+        hook = snapshot_capture_test_hook;
+    }
+    if(hook)
+        hook();
+}
+}
+#endif
+
 std::uint64_t SnapshotGraphState::MapId(const Map& map)
 {
     return map.GetId();
@@ -161,6 +180,9 @@ vector<KeyFrame*> Map::GetAllKeyFrames()
 KeyframeSnapshot Map::CaptureKeyframeSnapshot(
     KeyFrame* pKF, bool tombstone, std::set<std::uint64_t>* merge_edge_map_ids) const
 {
+#ifdef ORB_SLAM3_SNAPSHOT_TESTING
+    InvokeSnapshotCaptureTestHook();
+#endif
     KeyframeSnapshot value;
     value.id = pKF->mnId;
     value.map_id = mnId;
@@ -197,6 +219,14 @@ MapGraphSnapshot Map::GetGraphSnapshotData()
         snapshot.keyframes.push_back(tombstone.second);
     return snapshot;
 }
+
+#ifdef ORB_SLAM3_SNAPSHOT_TESTING
+void Map::SetSnapshotCaptureTestHook(std::function<void()> hook)
+{
+    unique_lock<mutex> lock(snapshot_capture_test_hook_mutex);
+    snapshot_capture_test_hook = std::move(hook);
+}
+#endif
 
 vector<MapPoint*> Map::GetAllMapPoints()
 {

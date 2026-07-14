@@ -28,6 +28,9 @@
 #include <pangolin/pangolin.h>
 #include <mutex>
 #include <map>
+#ifdef ORB_SLAM3_SNAPSHOT_TESTING
+#include <functional>
+#endif
 
 #include <boost/serialization/base_object.hpp>
 
@@ -86,6 +89,9 @@ public:
 
     std::vector<KeyFrame*> GetAllKeyFrames();
     MapGraphSnapshot GetGraphSnapshotData();
+#ifdef ORB_SLAM3_SNAPSHOT_TESTING
+    static void SetSnapshotCaptureTestHook(std::function<void()> hook);
+#endif
     std::vector<MapPoint*> GetAllMapPoints();
     std::vector<MapPoint*> GetReferenceMapPoints();
 
