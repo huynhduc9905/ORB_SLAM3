@@ -42,9 +42,16 @@ Verbose::eLevel Verbose::th = Verbose::VERBOSITY_NORMAL;
 System::System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor,
                const bool bUseViewer, const int initFr, const string &strSequence):
     mSensor(sensor), mpVocabulary(nullptr), mpKeyFrameDatabase(nullptr), mpAtlas(nullptr),
-    mpTracker(nullptr), mpLocalMapper(nullptr), mpLoopCloser(nullptr), mpViewer(nullptr),
+    mpTracker(nullptr), mpLocalMapper(nullptr), mpLoopCloser(nullptr),
+#ifndef ORB_SLAM3_HEADLESS
+    mpViewer(nullptr),
+#endif
     mpFrameDrawer(nullptr), mpMapDrawer(nullptr), mptLocalMapping(nullptr),
-    mptLoopClosing(nullptr), mptViewer(nullptr), mbReset(false), mbResetActiveMap(false),
+    mptLoopClosing(nullptr),
+#ifndef ORB_SLAM3_HEADLESS
+    mptViewer(nullptr),
+#endif
+    mbReset(false), mbResetActiveMap(false),
     mbActivateLocalizationMode(false), mbDeactivateLocalizationMode(false), mbShutDown(false)
 {
     // Output welcome message
@@ -253,7 +260,9 @@ System::~System()
     if(!isShutDown())
         Shutdown();
 
+#ifndef ORB_SLAM3_HEADLESS
     delete mpViewer;
+#endif
     delete mpLoopCloser;
     delete mpLocalMapper;
     delete mpTracker;
@@ -629,6 +638,7 @@ void System::Shutdown()
 
     mpLocalMapper->RequestFinish();
     mpLoopCloser->RequestFinish();
+#ifndef ORB_SLAM3_HEADLESS
     if(mpViewer)
     {
         mpViewer->RequestFinish();
@@ -654,6 +664,7 @@ void System::Shutdown()
         delete mptViewer;
         mptViewer = nullptr;
     }
+#endif
 
     // Threads have stopped; retain the live SLAM objects until the caller has
     // finished any post-shutdown trajectory queries.
