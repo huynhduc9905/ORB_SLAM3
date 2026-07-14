@@ -41,7 +41,10 @@ Verbose::eLevel Verbose::th = Verbose::VERBOSITY_NORMAL;
 
 System::System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor,
                const bool bUseViewer, const int initFr, const string &strSequence):
-    mSensor(sensor), mpViewer(static_cast<Viewer*>(NULL)), mbReset(false), mbResetActiveMap(false),
+    mSensor(sensor), mpVocabulary(nullptr), mpKeyFrameDatabase(nullptr), mpAtlas(nullptr),
+    mpTracker(nullptr), mpLocalMapper(nullptr), mpLoopCloser(nullptr), mpViewer(nullptr),
+    mpFrameDrawer(nullptr), mpMapDrawer(nullptr), mptLocalMapping(nullptr),
+    mptLoopClosing(nullptr), mptViewer(nullptr), mbReset(false), mbResetActiveMap(false),
     mbActivateLocalizationMode(false), mbDeactivateLocalizationMode(false), mbShutDown(false)
 {
     // Output welcome message
@@ -243,6 +246,23 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     // Fix verbosity
     Verbose::SetTh(Verbose::VERBOSITY_QUIET);
 
+}
+
+System::~System()
+{
+    if(!isShutDown())
+        Shutdown();
+
+    delete mpViewer;
+    delete mpLoopCloser;
+    delete mpLocalMapper;
+    delete mpTracker;
+    delete mpMapDrawer;
+    delete mpFrameDrawer;
+    delete mpAtlas;
+    delete mpKeyFrameDatabase;
+    delete mpVocabulary;
+    delete settings_;
 }
 
 Sophus::SE3f System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timestamp, const vector<IMU::Point>& vImuMeas, string filename)
@@ -609,14 +629,34 @@ void System::Shutdown()
 
     mpLocalMapper->RequestFinish();
     mpLoopCloser->RequestFinish();
-    /*if(mpViewer)
+    if(mpViewer)
     {
         mpViewer->RequestFinish();
-        while(!mpViewer->isFinished())
-            usleep(5000);
-    }*/
+    }
 
-    // Wait until all thread have effectively stopped
+    // Wait until all threads have effectively stopped before System members
+    // (and the objects they reference) are destroyed.
+    if(mptLocalMapping)
+    {
+        mptLocalMapping->join();
+        delete mptLocalMapping;
+        mptLocalMapping = nullptr;
+    }
+    if(mptLoopClosing)
+    {
+        mptLoopClosing->join();
+        delete mptLoopClosing;
+        mptLoopClosing = nullptr;
+    }
+    if(mptViewer)
+    {
+        mptViewer->join();
+        delete mptViewer;
+        mptViewer = nullptr;
+    }
+
+    // Threads have stopped; retain the live SLAM objects until the caller has
+    // finished any post-shutdown trajectory queries.
     /*while(!mpLocalMapper->isFinished() || !mpLoopCloser->isFinished() || mpLoopCloser->isRunningGBA())
     {
         if(!mpLocalMapper->isFinished())
