@@ -26,6 +26,11 @@ namespace ORB_SLAM3
 
 long unsigned int Map::nNextId=0;
 
+std::uint64_t SnapshotGraphState::MapId(const Map& map)
+{
+    return map.GetId();
+}
+
 Map::Map():mnMaxKFid(0),mnBigChangeIdx(0), mbImuInitialized(false), mnMapChange(0), mpFirstRegionKF(static_cast<KeyFrame*>(NULL)),
 mbFail(false), mIsInUse(false), mHasTumbnail(false), mbBad(false), mnMapChangeNotified(0), mbIsInertial(false), mbIMU_BA1(false), mbIMU_BA2(false)
 {
@@ -48,7 +53,6 @@ Map::~Map()
 
     //TODO: erase all keyframes from memory
     mspKeyFrames.clear();
-    mspErasedKeyFrames.clear();
 
     if(mThumbnail)
         delete mThumbnail;
@@ -56,6 +60,7 @@ Map::~Map()
 
     mvpReferenceMapPoints.clear();
     mvpKeyFrameOrigins.clear();
+    mErasedKeyframeSnapshots.clear();
 }
 
 void Map::AddKeyFrame(KeyFrame *pKF)
@@ -68,7 +73,7 @@ void Map::AddKeyFrame(KeyFrame *pKF)
         mpKFlowerID = pKF;
     }
     mspKeyFrames.insert(pKF);
-    mspErasedKeyFrames.erase(pKF);
+    mErasedKeyframeSnapshots.erase(pKF->mnId);
     if(pKF->mnId>mnMaxKFid)
     {
         mnMaxKFid=pKF->mnId;
@@ -110,7 +115,7 @@ void Map::EraseKeyFrame(KeyFrame *pKF)
 {
     unique_lock<mutex> lock(mMutexMap);
     mspKeyFrames.erase(pKF);
-    mspErasedKeyFrames.insert(pKF);
+    mErasedKeyframeSnapshots[pKF->mnId] = CaptureKeyframeSnapshot(pKF, true, nullptr);
     if(mspKeyFrames.size()>0)
     {
         if(pKF->mnId == mpKFlowerID->mnId)
@@ -153,12 +158,44 @@ vector<KeyFrame*> Map::GetAllKeyFrames()
     return vector<KeyFrame*>(mspKeyFrames.begin(),mspKeyFrames.end());
 }
 
-vector<KeyFrame*> Map::GetAllKeyFramesIncludingBad()
+KeyframeSnapshot Map::CaptureKeyframeSnapshot(
+    KeyFrame* pKF, bool tombstone, std::set<std::uint64_t>* merge_edge_map_ids) const
+{
+    KeyframeSnapshot value;
+    value.id = pKF->mnId;
+    value.map_id = mnId;
+    value.timestamp = pKF->mTimeStamp;
+    value.T_world_camera = pKF->GetPoseInverse();
+    value.bad = tombstone || pKF->isBad();
+    KeyFrame* parent = pKF->GetParent();
+    if(parent)
+    {
+        value.has_parent = true;
+        value.parent_id = parent->mnId;
+    }
+    for(KeyFrame* edge : pKF->GetLoopEdges())
+        if(edge)
+            value.loop_edge_ids.push_back(edge->mnId);
+    if(merge_edge_map_ids)
+        for(KeyFrame* edge : pKF->GetMergeEdges())
+            if(edge && edge->GetMap())
+                merge_edge_map_ids->insert(edge->GetMap()->GetId());
+    return value;
+}
+
+MapGraphSnapshot Map::GetGraphSnapshotData()
 {
     unique_lock<mutex> lock(mMutexMap);
-    vector<KeyFrame*> keyframes(mspKeyFrames.begin(), mspKeyFrames.end());
-    keyframes.insert(keyframes.end(), mspErasedKeyFrames.begin(), mspErasedKeyFrames.end());
-    return keyframes;
+    MapGraphSnapshot snapshot;
+    snapshot.map_id = mnId;
+    snapshot.big_change_index = mnBigChangeIdx;
+    snapshot.keyframes.reserve(mspKeyFrames.size() + mErasedKeyframeSnapshots.size());
+    for(KeyFrame* keyframe : mspKeyFrames)
+        snapshot.keyframes.push_back(CaptureKeyframeSnapshot(
+            keyframe, false, &snapshot.merge_edge_map_ids));
+    for(const auto& tombstone : mErasedKeyframeSnapshots)
+        snapshot.keyframes.push_back(tombstone.second);
+    return snapshot;
 }
 
 vector<MapPoint*> Map::GetAllMapPoints()
@@ -185,7 +222,7 @@ vector<MapPoint*> Map::GetReferenceMapPoints()
     return mvpReferenceMapPoints;
 }
 
-long unsigned int Map::GetId()
+long unsigned int Map::GetId() const
 {
     return mnId;
 }
@@ -224,6 +261,7 @@ void Map::SetStoredMap()
 
 void Map::clear()
 {
+    unique_lock<mutex> lock(mMutexMap);
 //    for(set<MapPoint*>::iterator sit=mspMapPoints.begin(), send=mspMapPoints.end(); sit!=send; sit++)
 //        delete *sit;
 
@@ -236,7 +274,7 @@ void Map::clear()
 
     mspMapPoints.clear();
     mspKeyFrames.clear();
-    mspErasedKeyFrames.clear();
+    mErasedKeyframeSnapshots.clear();
     mnMaxKFid = mnInitKFid;
     mbImuInitialized = false;
     mvpReferenceMapPoints.clear();

@@ -22,10 +22,12 @@
 
 #include "MapPoint.h"
 #include "KeyFrame.h"
+#include "SystemSnapshots.h"
 
 #include <set>
 #include <pangolin/pangolin.h>
 #include <mutex>
+#include <map>
 
 #include <boost/serialization/base_object.hpp>
 
@@ -83,14 +85,14 @@ public:
     int GetLastBigChangeIdx();
 
     std::vector<KeyFrame*> GetAllKeyFrames();
-    std::vector<KeyFrame*> GetAllKeyFramesIncludingBad();
+    MapGraphSnapshot GetGraphSnapshotData();
     std::vector<MapPoint*> GetAllMapPoints();
     std::vector<MapPoint*> GetReferenceMapPoints();
 
     long unsigned int MapPointsInMap();
     long unsigned  KeyFramesInMap();
 
-    long unsigned int GetId();
+    long unsigned int GetId() const;
 
     long unsigned int GetInitKFid();
     void SetInitKFid(long unsigned int initKFif);
@@ -163,9 +165,13 @@ protected:
 
     std::set<MapPoint*> mspMapPoints;
     std::set<KeyFrame*> mspKeyFrames;
-    // Erased bad keyframes remain owned by upstream for the Atlas lifetime.
-    // Retain their addresses solely so immutable snapshots can represent deletions.
-    std::set<KeyFrame*> mspErasedKeyFrames;
+    // Immutable records are captured while the keyframe is alive and this map
+    // is locked. They survive upstream keyframe destruction without retaining
+    // non-owning addresses.
+    std::map<std::uint64_t, KeyframeSnapshot> mErasedKeyframeSnapshots;
+
+    KeyframeSnapshot CaptureKeyframeSnapshot(KeyFrame* pKF, bool tombstone,
+                                             std::set<std::uint64_t>* merge_edge_map_ids) const;
 
     // Save/load, the set structure is broken in libboost 1.58 for ubuntu 16.04, a vector is serializated
     std::vector<MapPoint*> mvpBackupMapPoints;

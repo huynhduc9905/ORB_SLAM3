@@ -185,6 +185,9 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     mpFrameDrawer = new FrameDrawer(mpAtlas);
     mpMapDrawer = new MapDrawer(mpAtlas, strSettingsFile, settings_);
 
+    if(!loadedAtlas)
+        mSnapshotGraphState.SetInitialRootMap(*mpAtlas->GetCurrentMap());
+
     //Initialize the Tracking thread
     //(it will live in the main thread of execution, the one that called this constructor)
     cout << "Seq. Name: " << strSequence << endl;
@@ -536,6 +539,8 @@ GraphSnapshot System::GetGraphSnapshot()
     // Reset consumption and graph copying are serialized. This prevents a reset
     // request from allowing stale map membership to leak into a later epoch.
     unique_lock<mutex> reset_lock(mMutexReset);
+    if(mbReset || mbResetActiveMap)
+        return GraphSnapshot{};
     constexpr int kMaxSnapshotAttempts = 3;
     for(int attempt = 0; attempt < kMaxSnapshotAttempts; ++attempt)
     {
@@ -554,62 +559,41 @@ GraphSnapshot System::GetGraphSnapshot()
            !mpAtlas->mspMaps.count(candidate))
             continue;
 
-        vector<KeyFrame*> keyframes = candidate->GetAllKeyFramesIncludingBad();
-        const std::uint64_t map_id = candidate->GetId();
-        const int big_change_index = candidate->GetLastBigChangeIdx();
+        const MapGraphSnapshot map_snapshot = candidate->GetGraphSnapshotData();
         GraphSnapshot snapshot;
-        snapshot.active_map_id = map_id;
+        snapshot.active_map_id = map_snapshot.map_id;
         {
             unique_lock<mutex> snapshot_lock(mMutexSnapshot);
-            snapshot.revision = mSnapshotGraphState.Observe(map_id, big_change_index);
-            for(KeyFrame* keyframe : keyframes)
-            {
-                if(!keyframe)
-                    continue;
-                KeyframeSnapshot value;
-                value.id = keyframe->mnId;
-                value.map_id = map_id;
-                value.timestamp = keyframe->mTimeStamp;
-                value.T_world_camera = keyframe->GetPoseInverse();
-                value.bad = keyframe->isBad();
-                KeyFrame* parent = keyframe->GetParent();
-                if(parent && parent->GetMap() == candidate)
-                {
-                    value.has_parent = true;
-                    value.parent_id = parent->mnId;
-                }
-                for(KeyFrame* edge : keyframe->GetLoopEdges())
-                    if(edge)
-                        value.loop_edge_ids.push_back(edge->mnId);
-                for(KeyFrame* edge : keyframe->GetMergeEdges())
-                    if(edge && edge->GetMap() && mSnapshotGraphState.IsConnected(edge->GetMap()->GetId()))
-                        mSnapshotGraphState.MarkConnected(map_id);
-                snapshot.keyframes.push_back(std::move(value));
-            }
-            snapshot.active_map_connected = mSnapshotGraphState.IsConnected(map_id);
+            snapshot.revision = mSnapshotGraphState.Observe(
+                *candidate, map_snapshot.map_id, map_snapshot.big_change_index);
+            for(std::uint64_t merge_map_id : map_snapshot.merge_edge_map_ids)
+                if(mSnapshotGraphState.IsConnected(merge_map_id))
+                    mSnapshotGraphState.MarkConnected(*candidate);
+            snapshot.active_map_connected = mSnapshotGraphState.IsConnected(*candidate);
         }
+        snapshot.keyframes = map_snapshot.keyframes;
         return snapshot;
     }
     return GraphSnapshot{};
 }
 
-void System::BeginSnapshotEpoch()
+void System::BeginSnapshotEpoch(SnapshotGraphState::EpochKind kind)
 {
     unique_lock<mutex> snapshot_lock(mMutexSnapshot);
-    mSnapshotGraphState.BeginNewEpoch();
+    mSnapshotGraphState.BeginNewEpoch(kind);
 }
 
 void System::Reset()
 {
     unique_lock<mutex> lock(mMutexReset);
-    BeginSnapshotEpoch();
+    BeginSnapshotEpoch(SnapshotGraphState::EpochKind::FULL_RESET);
     mbReset = true;
 }
 
 void System::ResetActiveMap()
 {
     unique_lock<mutex> lock(mMutexReset);
-    BeginSnapshotEpoch();
+    BeginSnapshotEpoch(SnapshotGraphState::EpochKind::ACTIVE_MAP_RESET);
     mbResetActiveMap = true;
 }
 
@@ -1600,7 +1584,7 @@ bool System::LoadAtlas(int type)
         mpAtlas->SetKeyFrameDababase(mpKeyFrameDatabase);
         mpAtlas->SetORBVocabulary(mpVocabulary);
         mpAtlas->PostLoad();
-        BeginSnapshotEpoch();
+        BeginSnapshotEpoch(SnapshotGraphState::EpochKind::ATLAS_LOAD);
 
         return true;
     }

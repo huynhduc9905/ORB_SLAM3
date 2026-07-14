@@ -22,6 +22,8 @@
 namespace ORB_SLAM3
 {
 
+class Map;
+
 struct KeyframeSnapshot
 {
     std::uint64_t id{};
@@ -54,35 +56,64 @@ struct GraphSnapshot
     std::vector<KeyframeSnapshot> keyframes;
 };
 
+// Internal map-owned copy used to build a GraphSnapshot without retaining
+// KeyFrame addresses after the Map lock is released.
+struct MapGraphSnapshot
+{
+    std::uint64_t map_id{};
+    int big_change_index{};
+    std::vector<KeyframeSnapshot> keyframes;
+    std::set<std::uint64_t> merge_edge_map_ids;
+};
+
 // Value-only bookkeeping shared by System and the snapshot tests. An epoch
 // intentionally drops all prior connectivity when an atlas reset/load is requested.
 class SnapshotGraphState
 {
 public:
-    void BeginNewEpoch()
+    enum class EpochKind
+    {
+        FULL_RESET,
+        ACTIVE_MAP_RESET,
+        ATLAS_LOAD
+    };
+
+    void SetInitialRootMap(const Map& map)
+    {
+        mInitialRootMapIdentity = &map;
+        mConnectFirstObservedMap = false;
+    }
+
+    void BeginNewEpoch(EpochKind kind)
     {
         ++mEpoch;
         mHasLastMap = false;
-        mHasRootMap = false;
+        mLastMapIdentity = nullptr;
+        mInitialRootMapIdentity = nullptr;
+        mConnectFirstObservedMap = kind == EpochKind::FULL_RESET;
         mConnectedMapIds.clear();
     }
 
-    std::uint64_t Observe(std::uint64_t map_id, int big_change_index)
+    std::uint64_t Observe(const Map& map, std::uint64_t map_id, int big_change_index)
     {
-        if(!mHasLastMap || map_id != mLastMapId || big_change_index != mLastBigChangeIndex)
+        if(!mHasLastMap || &map != mLastMapIdentity || map_id != mLastMapId ||
+           big_change_index != mLastBigChangeIndex)
             ++mRevision;
         mHasLastMap = true;
+        mLastMapIdentity = &map;
         mLastMapId = map_id;
         mLastBigChangeIndex = big_change_index;
-        if(!mHasRootMap)
+        if(mConnectFirstObservedMap || &map == mInitialRootMapIdentity)
         {
-            mHasRootMap = true;
             mConnectedMapIds.insert(map_id);
+            mConnectFirstObservedMap = false;
+            mInitialRootMapIdentity = nullptr;
         }
         return mRevision;
     }
 
-    void MarkConnected(std::uint64_t map_id) { mConnectedMapIds.insert(map_id); }
+    void MarkConnected(const Map& map) { mConnectedMapIds.insert(MapId(map)); }
+    bool IsConnected(const Map& map) const { return IsConnected(MapId(map)); }
     bool IsConnected(std::uint64_t map_id) const
     {
         return mConnectedMapIds.count(map_id) != 0;
@@ -90,12 +121,16 @@ public:
     std::uint64_t Epoch() const { return mEpoch; }
 
 private:
+    static std::uint64_t MapId(const Map& map);
+
     std::uint64_t mEpoch{};
     std::uint64_t mRevision{};
     std::uint64_t mLastMapId{};
     int mLastBigChangeIndex{};
     bool mHasLastMap{};
-    bool mHasRootMap{};
+    bool mConnectFirstObservedMap{true};
+    const Map* mLastMapIdentity{};
+    const Map* mInitialRootMapIdentity{};
     std::set<std::uint64_t> mConnectedMapIds;
 };
 

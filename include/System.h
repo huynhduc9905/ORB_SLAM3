@@ -201,7 +201,7 @@ private:
 
     void SaveAtlas(int type);
     bool LoadAtlas(int type);
-    void BeginSnapshotEpoch();
+    void BeginSnapshotEpoch(SnapshotGraphState::EpochKind kind);
 
     string CalculateCheckSum(string filename, int type);
 
