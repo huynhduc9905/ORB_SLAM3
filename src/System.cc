@@ -643,6 +643,7 @@ void System::Shutdown()
     {
         mpViewer->RequestFinish();
     }
+#endif
 
     // Wait until all threads have effectively stopped before System members
     // (and the objects they reference) are destroyed.
@@ -658,6 +659,7 @@ void System::Shutdown()
         delete mptLoopClosing;
         mptLoopClosing = nullptr;
     }
+#ifndef ORB_SLAM3_HEADLESS
     if(mptViewer)
     {
         mptViewer->join();
