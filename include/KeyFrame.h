@@ -275,7 +275,7 @@ public:
     void SetBadFlag();
     bool isBad();
 #ifdef ORB_SLAM3_SNAPSHOT_TESTING
-    static void SetBadKeyframeMapLookupTestHook(std::function<void()> hook);
+    static void SetBadKeyframeConnectionsLockedTestHook(std::function<void()> hook);
     void SetKeyFrameDatabaseForTesting(KeyFrameDatabase* pKFDB)
     {
         mpKeyFrameDB = pKFDB;

@@ -29,15 +29,15 @@ long unsigned int KeyFrame::nNextId=0;
 #ifdef ORB_SLAM3_SNAPSHOT_TESTING
 namespace
 {
-std::mutex bad_keyframe_map_lookup_test_hook_mutex;
-std::function<void()> bad_keyframe_map_lookup_test_hook;
+std::mutex bad_keyframe_connections_locked_test_hook_mutex;
+std::function<void()> bad_keyframe_connections_locked_test_hook;
 
-void InvokeBadKeyframeMapLookupTestHook()
+void InvokeBadKeyframeConnectionsLockedTestHook()
 {
     std::function<void()> hook;
     {
-        unique_lock<mutex> lock(bad_keyframe_map_lookup_test_hook_mutex);
-        hook = bad_keyframe_map_lookup_test_hook;
+        unique_lock<mutex> lock(bad_keyframe_connections_locked_test_hook_mutex);
+        hook = bad_keyframe_connections_locked_test_hook;
     }
     if(hook)
         hook();
@@ -592,12 +592,12 @@ void KeyFrame::SetErase()
 
 void KeyFrame::SetBadFlag()
 {
-#ifdef ORB_SLAM3_SNAPSHOT_TESTING
-    InvokeBadKeyframeMapLookupTestHook();
-#endif
     const long unsigned int init_kf_id = mpMap->GetInitKFid();
     {
         unique_lock<mutex> lock(mMutexConnections);
+#ifdef ORB_SLAM3_SNAPSHOT_TESTING
+        InvokeBadKeyframeConnectionsLockedTestHook();
+#endif
         if(mnId==init_kf_id)
         {
             return;
@@ -703,10 +703,10 @@ void KeyFrame::SetBadFlag()
 }
 
 #ifdef ORB_SLAM3_SNAPSHOT_TESTING
-void KeyFrame::SetBadKeyframeMapLookupTestHook(std::function<void()> hook)
+void KeyFrame::SetBadKeyframeConnectionsLockedTestHook(std::function<void()> hook)
 {
-    unique_lock<mutex> lock(bad_keyframe_map_lookup_test_hook_mutex);
-    bad_keyframe_map_lookup_test_hook = std::move(hook);
+    unique_lock<mutex> lock(bad_keyframe_connections_locked_test_hook_mutex);
+    bad_keyframe_connections_locked_test_hook = std::move(hook);
 }
 #endif
 
