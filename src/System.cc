@@ -317,10 +317,35 @@ Sophus::SE3f System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, 
 
     // std::cout << "out grabber" << std::endl;
 
+    FrameSnapshot frame_snapshot;
+    frame_snapshot.timestamp = timestamp;
+    frame_snapshot.pose_valid = mpTracker->mCurrentFrame.isSet();
+    frame_snapshot.tracked_keypoints = mpTracker->mCurrentFrame.mvKeysUn.size();
+    if(frame_snapshot.pose_valid)
+    {
+        frame_snapshot.T_world_camera = Tcw.inverse();
+        KeyFrame* reference = mpTracker->mCurrentFrame.mpReferenceKF;
+        Map* reference_map = reference ? reference->GetMap() : nullptr;
+        if(reference && reference_map)
+        {
+            unique_lock<mutex> atlas_lock(mpAtlas->mMutexAtlas);
+            if(mpAtlas->mspMaps.count(reference_map) && !reference_map->IsBad())
+            {
+                frame_snapshot.map_id = reference_map->GetId();
+                frame_snapshot.reference_keyframe_id = reference->mnId;
+                const Sophus::SE3f T_world_reference_camera = reference->GetPoseInverse();
+                frame_snapshot.T_reference_camera_current_camera =
+                    T_world_reference_camera.inverse() * frame_snapshot.T_world_camera;
+            }
+        }
+    }
+
     unique_lock<mutex> lock2(mMutexState);
     mTrackingState = mpTracker->mState;
     mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
     mTrackedKeyPointsUn = mpTracker->mCurrentFrame.mvKeysUn;
+    frame_snapshot.tracking_state = mTrackingState;
+    mLastFrameSnapshot = frame_snapshot;
 
     return Tcw;
 }
@@ -500,15 +525,91 @@ bool System::MapChanged()
         return false;
 }
 
+FrameSnapshot System::GetLastFrameSnapshot() const
+{
+    unique_lock<mutex> lock(mMutexState);
+    return mLastFrameSnapshot;
+}
+
+GraphSnapshot System::GetGraphSnapshot()
+{
+    // Reset consumption and graph copying are serialized. This prevents a reset
+    // request from allowing stale map membership to leak into a later epoch.
+    unique_lock<mutex> reset_lock(mMutexReset);
+    constexpr int kMaxSnapshotAttempts = 3;
+    for(int attempt = 0; attempt < kMaxSnapshotAttempts; ++attempt)
+    {
+        Map* candidate = nullptr;
+        {
+            unique_lock<mutex> atlas_lock(mpAtlas->mMutexAtlas);
+            candidate = mpAtlas->mpCurrentMap;
+        }
+        if(!candidate)
+            return GraphSnapshot{};
+
+        unique_lock<mutex> map_update_lock(candidate->mMutexMapUpdate, defer_lock);
+        unique_lock<mutex> atlas_lock(mpAtlas->mMutexAtlas, defer_lock);
+        lock(map_update_lock, atlas_lock);
+        if(mpAtlas->mpCurrentMap != candidate || candidate->IsBad() ||
+           !mpAtlas->mspMaps.count(candidate))
+            continue;
+
+        vector<KeyFrame*> keyframes = candidate->GetAllKeyFramesIncludingBad();
+        const std::uint64_t map_id = candidate->GetId();
+        const int big_change_index = candidate->GetLastBigChangeIdx();
+        GraphSnapshot snapshot;
+        snapshot.active_map_id = map_id;
+        {
+            unique_lock<mutex> snapshot_lock(mMutexSnapshot);
+            snapshot.revision = mSnapshotGraphState.Observe(map_id, big_change_index);
+            for(KeyFrame* keyframe : keyframes)
+            {
+                if(!keyframe)
+                    continue;
+                KeyframeSnapshot value;
+                value.id = keyframe->mnId;
+                value.map_id = map_id;
+                value.timestamp = keyframe->mTimeStamp;
+                value.T_world_camera = keyframe->GetPoseInverse();
+                value.bad = keyframe->isBad();
+                KeyFrame* parent = keyframe->GetParent();
+                if(parent && parent->GetMap() == candidate)
+                {
+                    value.has_parent = true;
+                    value.parent_id = parent->mnId;
+                }
+                for(KeyFrame* edge : keyframe->GetLoopEdges())
+                    if(edge)
+                        value.loop_edge_ids.push_back(edge->mnId);
+                for(KeyFrame* edge : keyframe->GetMergeEdges())
+                    if(edge && edge->GetMap() && mSnapshotGraphState.IsConnected(edge->GetMap()->GetId()))
+                        mSnapshotGraphState.MarkConnected(map_id);
+                snapshot.keyframes.push_back(std::move(value));
+            }
+            snapshot.active_map_connected = mSnapshotGraphState.IsConnected(map_id);
+        }
+        return snapshot;
+    }
+    return GraphSnapshot{};
+}
+
+void System::BeginSnapshotEpoch()
+{
+    unique_lock<mutex> snapshot_lock(mMutexSnapshot);
+    mSnapshotGraphState.BeginNewEpoch();
+}
+
 void System::Reset()
 {
     unique_lock<mutex> lock(mMutexReset);
+    BeginSnapshotEpoch();
     mbReset = true;
 }
 
 void System::ResetActiveMap()
 {
     unique_lock<mutex> lock(mMutexReset);
+    BeginSnapshotEpoch();
     mbResetActiveMap = true;
 }
 
@@ -1499,6 +1600,7 @@ bool System::LoadAtlas(int type)
         mpAtlas->SetKeyFrameDababase(mpKeyFrameDatabase);
         mpAtlas->SetORBVocabulary(mpVocabulary);
         mpAtlas->PostLoad();
+        BeginSnapshotEpoch();
 
         return true;
     }
@@ -1546,4 +1648,3 @@ string System::CalculateCheckSum(string filename, int type)
 }
 
 } //namespace ORB_SLAM
-

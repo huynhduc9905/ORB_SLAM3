@@ -49,6 +49,7 @@ class Pinhole;
 class Atlas
 {
     friend class boost::serialization::access;
+    friend class System;
 
     template<class Archive>
     void serialize(Archive &ar, const unsigned int version)

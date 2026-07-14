@@ -41,6 +41,7 @@ class KeyFrameDatabase;
 class Map
 {
     friend class boost::serialization::access;
+    friend class System;
 
     template<class Archive>
     void serialize(Archive &ar, const unsigned int version)
@@ -82,6 +83,7 @@ public:
     int GetLastBigChangeIdx();
 
     std::vector<KeyFrame*> GetAllKeyFrames();
+    std::vector<KeyFrame*> GetAllKeyFramesIncludingBad();
     std::vector<MapPoint*> GetAllMapPoints();
     std::vector<MapPoint*> GetReferenceMapPoints();
 
@@ -161,6 +163,9 @@ protected:
 
     std::set<MapPoint*> mspMapPoints;
     std::set<KeyFrame*> mspKeyFrames;
+    // Erased bad keyframes remain owned by upstream for the Atlas lifetime.
+    // Retain their addresses solely so immutable snapshots can represent deletions.
+    std::set<KeyFrame*> mspErasedKeyFrames;
 
     // Save/load, the set structure is broken in libboost 1.58 for ubuntu 16.04, a vector is serializated
     std::vector<MapPoint*> mvpBackupMapPoints;

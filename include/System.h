@@ -26,6 +26,7 @@
 #include<stdlib.h>
 #include<string>
 #include<thread>
+#include<mutex>
 #include<opencv2/core/core.hpp>
 
 #include "Tracking.h"
@@ -39,6 +40,7 @@
 #include "Viewer.h"
 #include "ImuTypes.h"
 #include "Settings.h"
+#include "SystemSnapshots.h"
 
 
 namespace ORB_SLAM3
@@ -130,6 +132,9 @@ public:
     // since last call to this function
     bool MapChanged();
 
+    FrameSnapshot GetLastFrameSnapshot() const;
+    GraphSnapshot GetGraphSnapshot();
+
     // Reset the system (clear Atlas or the active map)
     void Reset();
     void ResetActiveMap();
@@ -196,6 +201,7 @@ private:
 
     void SaveAtlas(int type);
     bool LoadAtlas(int type);
+    void BeginSnapshotEpoch();
 
     string CalculateCheckSum(string filename, int type);
 
@@ -253,7 +259,11 @@ private:
     int mTrackingState;
     std::vector<MapPoint*> mTrackedMapPoints;
     std::vector<cv::KeyPoint> mTrackedKeyPointsUn;
-    std::mutex mMutexState;
+    mutable std::mutex mMutexState;
+    FrameSnapshot mLastFrameSnapshot;
+
+    std::mutex mMutexSnapshot;
+    SnapshotGraphState mSnapshotGraphState;
 
     //
     string mStrLoadAtlasFromFile;

@@ -48,6 +48,7 @@ Map::~Map()
 
     //TODO: erase all keyframes from memory
     mspKeyFrames.clear();
+    mspErasedKeyFrames.clear();
 
     if(mThumbnail)
         delete mThumbnail;
@@ -67,6 +68,7 @@ void Map::AddKeyFrame(KeyFrame *pKF)
         mpKFlowerID = pKF;
     }
     mspKeyFrames.insert(pKF);
+    mspErasedKeyFrames.erase(pKF);
     if(pKF->mnId>mnMaxKFid)
     {
         mnMaxKFid=pKF->mnId;
@@ -108,6 +110,7 @@ void Map::EraseKeyFrame(KeyFrame *pKF)
 {
     unique_lock<mutex> lock(mMutexMap);
     mspKeyFrames.erase(pKF);
+    mspErasedKeyFrames.insert(pKF);
     if(mspKeyFrames.size()>0)
     {
         if(pKF->mnId == mpKFlowerID->mnId)
@@ -148,6 +151,14 @@ vector<KeyFrame*> Map::GetAllKeyFrames()
 {
     unique_lock<mutex> lock(mMutexMap);
     return vector<KeyFrame*>(mspKeyFrames.begin(),mspKeyFrames.end());
+}
+
+vector<KeyFrame*> Map::GetAllKeyFramesIncludingBad()
+{
+    unique_lock<mutex> lock(mMutexMap);
+    vector<KeyFrame*> keyframes(mspKeyFrames.begin(), mspKeyFrames.end());
+    keyframes.insert(keyframes.end(), mspErasedKeyFrames.begin(), mspErasedKeyFrames.end());
+    return keyframes;
 }
 
 vector<MapPoint*> Map::GetAllMapPoints()
@@ -225,6 +236,7 @@ void Map::clear()
 
     mspMapPoints.clear();
     mspKeyFrames.clear();
+    mspErasedKeyFrames.clear();
     mnMaxKFid = mnInitKFid;
     mbImuInitialized = false;
     mvpReferenceMapPoints.clear();
