@@ -18,6 +18,7 @@
 
 
 #include "KeyFrameDatabase.h"
+#include "LoopRevisitPolicy.h"
 
 #include "KeyFrame.h"
 #include "Thirdparty/DBoW2/DBoW2/BowVector.h"
@@ -623,7 +624,15 @@ void KeyFrameDatabase::DetectNBestCandidates(KeyFrame *pKF, vector<KeyFrame*> &v
                 if(pKFi->mnPlaceRecognitionQuery!=pKF->mnId)
                 {
                     pKFi->mnPlaceRecognitionWords=0;
-                    if(!spConnectedKF.count(pKFi))
+                    // Fork change: exclude a covisibility-connected keyframe only
+                    // when it is a recent trajectory neighbor (small id gap).
+                    // Distant connected keyframes are genuine revisits and remain
+                    // eligible loop candidates.
+                    const bool connected = spConnectedKF.count(pKFi) != 0;
+                    const bool exclude = connected &&
+                        orb_slam3_wrapper_fork::shouldExcludeConnectedLoopCandidate(
+                            pKF->mnId, pKFi->mnId);
+                    if(!exclude)
                     {
 
                         pKFi->mnPlaceRecognitionQuery=pKF->mnId;
