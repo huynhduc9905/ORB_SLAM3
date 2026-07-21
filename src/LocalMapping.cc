@@ -863,8 +863,17 @@ void LocalMapping::Release()
         return;
     mbStopped = false;
     mbStopRequested = false;
+    // Fork fix (use-after-free): do NOT delete queued keyframes here. They are
+    // already registered in the Atlas and may be referenced by MapPoint
+    // observations and by a concurrently running Global Bundle Adjustment thread.
+    // A bare delete frees memory still in use, crashing later in
+    // KeyFrame::GetCameraCenter (via MapPoint::UpdateNormalAndDepth) when a mutex
+    // inside the freed KeyFrame is locked. Detach them with SetBadFlag() instead
+    // and let the map own the memory (ORB-SLAM3's leak-over-dangle policy). This
+    // is exposed heavily by the id-gap loop-revisit policy, which closes loops on
+    // covisibility-connected keyframes while the LocalMapping queue is non-empty.
     for(list<KeyFrame*>::iterator lit = mlNewKeyFrames.begin(), lend=mlNewKeyFrames.end(); lit!=lend; lit++)
-        delete *lit;
+        (*lit)->SetBadFlag();
     mlNewKeyFrames.clear();
 
     cout << "Local Mapping RELEASE" << endl;
@@ -1414,7 +1423,7 @@ void LocalMapping::InitializeIMU(float priorG, float priorA, bool bFIBA)
     for(list<KeyFrame*>::iterator lit = mlNewKeyFrames.begin(), lend=mlNewKeyFrames.end(); lit!=lend; lit++)
     {
         (*lit)->SetBadFlag();
-        delete *lit;
+        // Fork fix (use-after-free): detach but do not free; see LocalMapping::Release.
     }
     mlNewKeyFrames.clear();
 
@@ -1483,7 +1492,7 @@ void LocalMapping::ScaleRefinement()
     for(list<KeyFrame*>::iterator lit = mlNewKeyFrames.begin(), lend=mlNewKeyFrames.end(); lit!=lend; lit++)
     {
         (*lit)->SetBadFlag();
-        delete *lit;
+        // Fork fix (use-after-free): detach but do not free; see LocalMapping::Release.
     }
     mlNewKeyFrames.clear();
 
