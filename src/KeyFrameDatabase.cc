@@ -664,7 +664,6 @@ void KeyFrameDatabase::DetectNBestCandidates(KeyFrame *pKF, vector<KeyFrame*> &v
     for(list<KeyFrame*>::iterator lit=lKFsSharingWords.begin(), lend= lKFsSharingWords.end(); lit!=lend; lit++)
     {
         KeyFrame* pKFi = *lit;
-
         if(pKFi->mnPlaceRecognitionWords>minCommonWords)
         {
             nscores++;
@@ -694,7 +693,11 @@ void KeyFrameDatabase::DetectNBestCandidates(KeyFrame *pKF, vector<KeyFrame*> &v
             KeyFrame* pKF2 = *vit;
             if(pKF2->mnPlaceRecognitionQuery!=pKF->mnId)
                 continue;
-
+            if(pKF2->mnPlaceRecognitionWords<=minCommonWords){
+                float si = mpVoc->score(pKF->mBowVec,pKF2->mBowVec);
+                pKF2->mPlaceRecognitionScore=si;
+                pKF2->mnPlaceRecognitionWords = minCommonWords+1;
+            }
             accScore+=pKF2->mPlaceRecognitionScore;
             if(pKF2->mPlaceRecognitionScore>bestScore)
             {

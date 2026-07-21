@@ -49,6 +49,10 @@ namespace ORB_SLAM3
         for(size_t iMP=0; iMP<vpMapPoints.size(); iMP++)
         {
             MapPoint* pMP = vpMapPoints[iMP];
+
+            if(pMP->mnLastFrameSeen == F.mnId)
+                continue;
+
             if(!pMP->mbTrackInView && !pMP->mbTrackInViewR)
                 continue;
 
@@ -1082,6 +1086,7 @@ namespace ORB_SLAM3
                                                                         : (bestIdx2 < pKF2 -> NLeft) ? pKF2 -> mvKeys[bestIdx2]
                                                                                                      : pKF2 -> mvKeysRight[bestIdx2 - pKF2 -> NLeft];
                         vMatches12[idx1]=bestIdx2;
+                        vbMatched2[bestIdx2]=true;
                         nmatches++;
 
                         if(mbCheckOrientation)
