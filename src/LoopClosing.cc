@@ -1152,6 +1152,13 @@ void LoopClosing::CorrectLoop()
     for(vector<KeyFrame*>::iterator vit=mvpCurrentConnectedKFs.begin(), vend=mvpCurrentConnectedKFs.end(); vit!=vend; vit++)
     {
         KeyFrame* pKFi = *vit;
+        // Fork guard: a covisibility-connected keyframe can be culled by Local
+        // Mapping between loop detection and correction. The id-gap revisit policy
+        // makes loop closures on covisible/near keyframes far more frequent, which
+        // exposes this. Skip null/bad KFs so the essential-graph optimizer never
+        // receives a dangling pointer (see OptimizeEssentialGraph null deref crash).
+        if(!pKFi || pKFi->isBad())
+            continue;
         vector<KeyFrame*> vpPreviousNeighbors = pKFi->GetVectorCovisibleKeyFrames();
 
         // Update connections. Detect new links.
