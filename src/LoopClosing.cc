@@ -18,6 +18,7 @@
 
 
 #include "LoopClosing.h"
+#include "LoopRevisitPolicy.h"
 
 #include "Sim3Solver.h"
 #include "Converter.h"
@@ -628,7 +629,13 @@ bool LoopClosing::DetectCommonRegionsFromBoW(std::vector<KeyFrame*> &vpBowCand, 
         bool bAbortByNearKF = false;
         for(int j=0; j<vpCovKFi.size(); ++j)
         {
-            if(spConnectedKeyFrames.find(vpCovKFi[j]) != spConnectedKeyFrames.end())
+            KeyFrame* pCov = vpCovKFi[j];
+            // Fork change: abort on a near covisibility neighbor only when it is
+            // a recent trajectory neighbor by id gap. Distant connected keyframes
+            // are genuine revisits and must be allowed through to Sim3 checks.
+            if(pCov && spConnectedKeyFrames.find(pCov) != spConnectedKeyFrames.end() &&
+               orb_slam3_wrapper_fork::shouldExcludeConnectedLoopCandidate(
+                   mpCurrentKF->mnId, pCov->mnId))
             {
                 bAbortByNearKF = true;
                 break;
