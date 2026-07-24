@@ -33,6 +33,31 @@
 namespace ORB_SLAM3
 {
 
+#ifdef ORB_SLAM3_SNAPSHOT_TESTING
+namespace
+{
+std::mutex gbaStartHookMutex;
+std::function<void()> gbaStartHook;
+
+void InvokeGbaStartHookForTesting()
+{
+    std::function<void()> hook;
+    {
+        std::lock_guard<std::mutex> lock(gbaStartHookMutex);
+        hook = gbaStartHook;
+    }
+    if(hook)
+        hook();
+}
+}
+
+void LoopClosing::SetGlobalBundleAdjustmentStartHookForTesting(std::function<void()> hook)
+{
+    std::lock_guard<std::mutex> lock(gbaStartHookMutex);
+    gbaStartHook = std::move(hook);
+}
+#endif
+
 LoopClosing::LoopClosing(Atlas *pAtlas, KeyFrameDatabase *pDB, ORBVocabulary *pVoc, const bool bFixScale, const bool bActiveLC):
     mbResetRequested(false), mbResetActiveMapRequested(false), mbFinishRequested(false), mbFinished(true), mpAtlas(pAtlas),
     mpKeyFrameDB(pDB), mpORBVocabulary(pVoc), mpMatchedKF(NULL), mLastLoopKFid(0), mbRunningGBA(false), mbFinishedGBA(true),
@@ -77,6 +102,11 @@ LoopClosing::LoopClosing(Atlas *pAtlas, KeyFrameDatabase *pDB, ORBVocabulary *pV
     mnCorrectionGBA = 0;
 }
 
+LoopClosing::~LoopClosing()
+{
+    StopAndJoinGlobalBundleAdjustment();
+}
+
 void LoopClosing::SetTracker(Tracking *pTracker)
 {
     mpTracker=pTracker;
@@ -85,6 +115,57 @@ void LoopClosing::SetTracker(Tracking *pTracker)
 void LoopClosing::SetLocalMapper(LocalMapping *pLocalMapper)
 {
     mpLocalMapper=pLocalMapper;
+}
+
+void LoopClosing::LaunchGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoopKF)
+{
+    // A completed worker remains joinable until reaped. Always reap it before
+    // reusing mpThreadGBA; never detach a worker that still references SLAM state.
+    StopAndJoinGlobalBundleAdjustment();
+
+    unique_lock<mutex> lock(mMutexGBA);
+    mbStopGBA.store(false);
+    mbRunningGBA = true;
+    mbFinishedGBA = false;
+    const unsigned long generation = mnFullBAIdx;
+    mpThreadGBA = new thread(&LoopClosing::RunGlobalBundleAdjustment, this,
+                             pActiveMap, nLoopKF, generation);
+}
+
+bool LoopClosing::ShouldAbortGlobalBundleAdjustment(unsigned long nGbaGeneration)
+{
+    unique_lock<mutex> lock(mMutexGBA);
+    return mbStopGBA.load() || nGbaGeneration != mnFullBAIdx;
+}
+
+void LoopClosing::MarkGlobalBundleAdjustmentFinished()
+{
+    unique_lock<mutex> lock(mMutexGBA);
+    mbFinishedGBA = true;
+    mbRunningGBA = false;
+}
+
+void LoopClosing::StopAndJoinGlobalBundleAdjustment()
+{
+    thread* gbaWorker = nullptr;
+    {
+        unique_lock<mutex> lock(mMutexGBA);
+        mbStopGBA.store(true);
+        ++mnFullBAIdx;
+        gbaWorker = mpThreadGBA;
+        mpThreadGBA = nullptr;
+    }
+
+    // Joining is intentionally outside mMutexGBA: the worker uses that mutex
+    // when observing cancellation and recording completion.
+    if(gbaWorker)
+    {
+        if(gbaWorker->joinable() && gbaWorker->get_id() != this_thread::get_id())
+            gbaWorker->join();
+        delete gbaWorker;
+    }
+
+    MarkGlobalBundleAdjustmentFinished();
 }
 
 
@@ -986,16 +1067,7 @@ void LoopClosing::CorrectLoop()
     if(isRunningGBA())
     {
         cout << "Stoping Global Bundle Adjustment...";
-        unique_lock<mutex> lock(mMutexGBA);
-        mbStopGBA = true;
-
-        mnFullBAIdx++;
-
-        if(mpThreadGBA)
-        {
-            mpThreadGBA->detach();
-            delete mpThreadGBA;
-        }
+        StopAndJoinGlobalBundleAdjustment();
         cout << "  Done!!" << endl;
     }
 
@@ -1212,12 +1284,8 @@ void LoopClosing::CorrectLoop()
     // Launch a new thread to perform Global Bundle Adjustment (Only if few keyframes, if not it would take too much time)
     if(!pLoopMap->isImuInitialized() || (pLoopMap->KeyFramesInMap()<200 && mpAtlas->CountMaps()==1))
     {
-        mbRunningGBA = true;
-        mbFinishedGBA = false;
-        mbStopGBA = false;
         mnCorrectionGBA = mnNumCorrection;
-
-        mpThreadGBA = new thread(&LoopClosing::RunGlobalBundleAdjustment, this, pLoopMap, mpCurrentKF->mnId);
+        LaunchGlobalBundleAdjustment(pLoopMap, mpCurrentKF->mnId);
     }
 
     // Loop closed. Release Local Mapping.
@@ -1244,16 +1312,7 @@ void LoopClosing::MergeLocal()
     // If a Global Bundle Adjustment is running, abort it
     if(isRunningGBA())
     {
-        unique_lock<mutex> lock(mMutexGBA);
-        mbStopGBA = true;
-
-        mnFullBAIdx++;
-
-        if(mpThreadGBA)
-        {
-            mpThreadGBA->detach();
-            delete mpThreadGBA;
-        }
+        StopAndJoinGlobalBundleAdjustment();
         bRelaunchBA = true;
     }
 
@@ -1777,10 +1836,7 @@ void LoopClosing::MergeLocal()
     if(bRelaunchBA && (!pCurrentMap->isImuInitialized() || (pCurrentMap->KeyFramesInMap()<200 && mpAtlas->CountMaps()==1)))
     {
         // Launch a new thread to perform Global Bundle Adjustment
-        mbRunningGBA = true;
-        mbFinishedGBA = false;
-        mbStopGBA = false;
-        mpThreadGBA = new thread(&LoopClosing::RunGlobalBundleAdjustment,this, pMergeMap, mpCurrentKF->mnId);
+        LaunchGlobalBundleAdjustment(pMergeMap, mpCurrentKF->mnId);
     }
 
     mpMergeMatchedKF->AddMergeEdge(mpCurrentKF);
@@ -1817,16 +1873,7 @@ void LoopClosing::MergeLocal2()
     // If a Global Bundle Adjustment is running, abort it
     if(isRunningGBA())
     {
-        unique_lock<mutex> lock(mMutexGBA);
-        mbStopGBA = true;
-
-        mnFullBAIdx++;
-
-        if(mpThreadGBA)
-        {
-            mpThreadGBA->detach();
-            delete mpThreadGBA;
-        }
+        StopAndJoinGlobalBundleAdjustment();
         bRelaunchBA = true;
     }
 
@@ -2279,8 +2326,21 @@ void LoopClosing::ResetIfRequested()
     }
 }
 
-void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoopKF)
-{  
+void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoopKF,
+                                             unsigned long nGbaGeneration)
+{
+    // The worker is owned by LoopClosing and is joined before any object it
+    // touches is destroyed. Cancellation is checked at phase boundaries; do
+    // not pass a shared bool into the optimizer because that creates a data
+    // race with the thread requesting cancellation.
+#ifdef ORB_SLAM3_SNAPSHOT_TESTING
+    InvokeGbaStartHookForTesting();
+#endif
+    if(ShouldAbortGlobalBundleAdjustment(nGbaGeneration))
+    {
+        MarkGlobalBundleAdjustmentFinished();
+        return;
+    }
     Verbose::PrintMess("Starting Global Bundle Adjustment", Verbose::VERBOSITY_NORMAL);
 
 #ifdef REGISTER_TIMES
@@ -2295,9 +2355,9 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
     const bool bImuInit = pActiveMap->isImuInitialized();
 
     if(!bImuInit)
-        Optimizer::GlobalBundleAdjustemnt(pActiveMap,10,&mbStopGBA,nLoopKF,false);
+        Optimizer::GlobalBundleAdjustemnt(pActiveMap,10,NULL,nLoopKF,false);
     else
-        Optimizer::FullInertialBA(pActiveMap,7,false,nLoopKF,&mbStopGBA);
+        Optimizer::FullInertialBA(pActiveMap,7,false,nLoopKF,NULL);
 
 #ifdef REGISTER_TIMES
     std::chrono::steady_clock::time_point time_EndGBA = std::chrono::steady_clock::now();
@@ -2305,28 +2365,32 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
     double timeGBA = std::chrono::duration_cast<std::chrono::duration<double,std::milli> >(time_EndGBA - time_StartFGBA).count();
     vdGBA_ms.push_back(timeGBA);
 
-    if(mbStopGBA)
+    if(mbStopGBA.load())
     {
         nFGBA_abort += 1;
     }
 #endif
 
-    int idx =  mnFullBAIdx;
-    // Optimizer::GlobalBundleAdjustemnt(mpMap,10,&mbStopGBA,nLoopKF,false);
-
-    // Update all MapPoints and KeyFrames
-    // Local Mapping was active during BA, that means that there might be new keyframes
-    // not included in the Global BA and they are not consistent with the updated map.
-    // We need to propagate the correction through the spanning tree
+    const unsigned long idx = nGbaGeneration;
+    // Update all MapPoints and KeyFrames. A superseded/cancelled worker must
+    // never publish corrections; it will be reaped by the requesting thread.
     {
         unique_lock<mutex> lock(mMutexGBA);
-        if(idx!=mnFullBAIdx)
+        if(idx!=mnFullBAIdx || mbStopGBA.load())
+        {
+            mbFinishedGBA = true;
+            mbRunningGBA = false;
             return;
+        }
 
         if(!bImuInit && pActiveMap->isImuInitialized())
+        {
+            mbFinishedGBA = true;
+            mbRunningGBA = false;
             return;
+        }
 
-        if(!mbStopGBA)
+        if(!mbStopGBA.load())
         {
             Verbose::PrintMess("Global Bundle Adjustment finished", Verbose::VERBOSITY_NORMAL);
             Verbose::PrintMess("Updating map ...", Verbose::VERBOSITY_NORMAL);
