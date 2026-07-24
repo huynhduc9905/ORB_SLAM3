@@ -1592,6 +1592,8 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
             const long unsigned int nIDj = pKFj->mnId;
             if((nIDi!=pCurKF->mnId || nIDj!=pLoopKF->mnId) && pKF->GetWeight(pKFj)<minFeat)
                 continue;
+            if(nIDj > nMaxKFid)  // fork guard: skip out-of-range vScw index
+                continue;
 
             const g2o::Sim3 Sjw = vScw[nIDj];
             const g2o::Sim3 Sji = Sjw * Swi;
@@ -1630,15 +1632,19 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
 
         KeyFrame* pParentKF = pKF->GetParent();
 
-        // Spanning tree edge
-        if(pParentKF)
+        // Spanning tree edge. Fork guard: skip when the parent's id is outside
+        // the vScw range and it has no NonCorrectedSim3 entry, so we never
+        // index vScw out of bounds (id-gap / cross-map parent).
+        bool parent_in_range = pParentKF &&
+            (NonCorrectedSim3.find(pParentKF) != NonCorrectedSim3.end() ||
+             (pParentKF->mnId >= 0 &&
+              static_cast<unsigned int>(pParentKF->mnId) <= nMaxKFid));
+        if(pParentKF && parent_in_range)
         {
             int nIDj = pParentKF->mnId;
 
             g2o::Sim3 Sjw;
-
             LoopClosing::KeyFrameAndPose::const_iterator itj = NonCorrectedSim3.find(pParentKF);
-
             if(itj!=NonCorrectedSim3.end())
                 Sjw = itj->second;
             else
@@ -1715,8 +1721,13 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
             }
         }
 
-        // Inertial edges if inertial
-        if(pKF->bImu && pKF->mPrevKF)
+        // Inertial edges if inertial. Fork guard: only build the edge when the
+        // previous keyframe is either in NonCorrectedSim3 or its id is within
+        // the vScw range, so we never index vScw out of bounds.
+        if(pKF->bImu && pKF->mPrevKF &&
+           (NonCorrectedSim3.find(pKF->mPrevKF) != NonCorrectedSim3.end() ||
+            (pKF->mPrevKF->mnId >= 0 &&
+             static_cast<unsigned int>(pKF->mPrevKF->mnId) <= nMaxKFid)))
         {
             g2o::Sim3 Spw;
             LoopClosing::KeyFrameAndPose::const_iterator itp = NonCorrectedSim3.find(pKF->mPrevKF);
@@ -1750,6 +1761,15 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
         const int nIDi = pKFi->mnId;
 
         g2o::VertexSim3Expmap* VSim3 = static_cast<g2o::VertexSim3Expmap*>(optimizer.vertex(nIDi));
+        // Fork guard (SIGSEGV under aggressive KF culling): the vertex-setup
+        // loop skips bad keyframes, so they have no vertex. This recovery loop
+        // iterates the same vpKFs snapshot; a keyframe that was bad (or was
+        // culled between snapshot and here) has optimizer.vertex(nIDi)==nullptr,
+        // and VSim3->estimate() then dereferences null (this==0). Confirmed via
+        // core dump: crash at OptimizeEssentialGraph with rdi=0. Skip null
+        // vertices — those keyframes are not part of the optimized graph.
+        if(!VSim3)
+            continue;
         g2o::Sim3 CorrectedSiw =  VSim3->estimate();
         vCorrectedSwc[nIDi]=CorrectedSiw.inverse();
         double s = CorrectedSiw.scale();
@@ -1774,9 +1794,19 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
         else
         {
             KeyFrame* pRefKF = pMP->GetReferenceKeyFrame();
+            // Fork guard: a map point can outlive/reference a keyframe that is
+            // not part of this map's vScw range (culled ref KF, or a stale
+            // mnCorrectedReference). Skip rather than index vScw out of bounds.
+            if(!pRefKF)
+                continue;
             nIDr = pRefKF->mnId;
         }
 
+        // Fork guard: vScw/vCorrectedSwc are sized nMaxKFid+1; an out-of-range
+        // reference id (id-gap policy / cross-map reference) would read out of
+        // bounds. Skip the correction for such points.
+        if(nIDr < 0 || static_cast<unsigned int>(nIDr) > nMaxKFid)
+            continue;
 
         g2o::Sim3 Srw = vScw[nIDr];
         g2o::Sim3 correctedSwr = vCorrectedSwc[nIDr];
