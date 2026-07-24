@@ -240,7 +240,11 @@ protected:
     bool mbFixScale;
 
 
-    bool mnFullBAIdx;
+    // Monotonic GBA generation counter. Each launch captures the current value
+    // and each stop increments it, so a completed-but-superseded worker can
+    // detect that it must discard its result. Must be a wide unsigned integer
+    // (not bool/narrow) so distinct in-flight generations never alias.
+    unsigned long mnFullBAIdx;
 
 
 
