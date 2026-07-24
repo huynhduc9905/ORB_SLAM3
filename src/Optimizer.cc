@@ -5504,10 +5504,14 @@ void Optimizer::OptimizeEssentialGraph4DoF(Map* pMap, KeyFrame* pLoopKF, KeyFram
         else
             Siw = vScw[nIDi];
 
-        // Spanning-tree edge is valid only when the parent was added as the
-        // exact KeyFrame vertex for this optimization.
-        KeyFrame* pParentKF = pKF->GetParent();
-        if(hasVertex(pParentKF))
+        // 1.1.0 Spanning tree edge — intentionally disabled to preserve upstream
+        // ORB-SLAM3 4-DoF behavior. Upstream sets the parent to NULL here so this
+        // block is inert; enabling it (parent = GetParent()) adds spanning-tree
+        // constraints that change inertial loop-closure results and were not
+        // validated, so it is deliberately left disabled. The membership guards
+        // elsewhere (loop/inertial/covisibility edges) still apply.
+        KeyFrame* pParentKF = static_cast<KeyFrame*>(NULL);
+        if(pParentKF)
         {
             int nIDj = pParentKF->mnId;
 
