@@ -48,7 +48,7 @@ namespace g2o{
 
 
   SparseOptimizer::SparseOptimizer() :
-    _forceStopFlag(0), _verbose(false), _algorithm(0), _computeBatchStatistics(false)
+    _forceStopFlag(0), _atomicForceStopFlag(0), _verbose(false), _algorithm(0), _computeBatchStatistics(false)
   {
     _graphActions.resize(AT_NUM_ELEMENTS);
   }
@@ -574,6 +574,13 @@ namespace g2o{
   void SparseOptimizer::setForceStopFlag(bool* flag)
   {
     _forceStopFlag=flag;
+    _atomicForceStopFlag=0;
+  }
+
+  void SparseOptimizer::setForceStopFlag(const std::atomic<bool>* flag)
+  {
+    _forceStopFlag=0;
+    _atomicForceStopFlag=flag;
   }
 
   bool SparseOptimizer::removeVertex(HyperGraph::Vertex* v)

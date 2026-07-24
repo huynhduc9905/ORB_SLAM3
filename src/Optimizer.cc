@@ -49,16 +49,18 @@ bool sortByVal(const pair<MapPoint*, int> &a, const pair<MapPoint*, int> &b)
     return (a.second < b.second);
 }
 
-void Optimizer::GlobalBundleAdjustemnt(Map* pMap, int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust)
+void Optimizer::GlobalBundleAdjustemnt(Map* pMap, int nIterations, bool* pbStopFlag, const unsigned long nLoopKF,
+                                       const bool bRobust, const std::atomic<bool>* pAtomicStopFlag)
 {
     vector<KeyFrame*> vpKFs = pMap->GetAllKeyFrames();
     vector<MapPoint*> vpMP = pMap->GetAllMapPoints();
-    BundleAdjustment(vpKFs,vpMP,nIterations,pbStopFlag, nLoopKF, bRobust);
+    BundleAdjustment(vpKFs,vpMP,nIterations,pbStopFlag, nLoopKF, bRobust, pAtomicStopFlag);
 }
 
 
 void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<MapPoint *> &vpMP,
-                                 int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust)
+                                 int nIterations, bool* pbStopFlag, const unsigned long nLoopKF,
+                                 const bool bRobust, const std::atomic<bool>* pAtomicStopFlag)
 {
     vector<bool> vbNotIncludedMP;
     vbNotIncludedMP.resize(vpMP.size());
@@ -78,6 +80,8 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
 
     if(pbStopFlag)
         optimizer.setForceStopFlag(pbStopFlag);
+    else if(pAtomicStopFlag)
+        optimizer.setForceStopFlag(pAtomicStopFlag);
 
     long unsigned int maxKFid = 0;
 
@@ -278,6 +282,9 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
     optimizer.setVerbose(false);
     optimizer.initializeOptimization();
     optimizer.optimize(nIterations);
+    if((pbStopFlag && *pbStopFlag) ||
+       (pAtomicStopFlag && pAtomicStopFlag->load(std::memory_order_relaxed)))
+        return;
     Verbose::PrintMess("BA: End of the optimization", Verbose::VERBOSITY_NORMAL);
 
     // Recover optimized data
@@ -389,7 +396,7 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
     }
 }
 
-void Optimizer::FullInertialBA(Map *pMap, int its, const bool bFixLocal, const long unsigned int nLoopId, bool *pbStopFlag, bool bInit, float priorG, float priorA, Eigen::VectorXd *vSingVal, bool *bHess)
+void Optimizer::FullInertialBA(Map *pMap, int its, const bool bFixLocal, const long unsigned int nLoopId, bool *pbStopFlag, bool bInit, float priorG, float priorA, Eigen::VectorXd *vSingVal, bool *bHess, const std::atomic<bool>* pAtomicStopFlag)
 {
     long unsigned int maxKFid = pMap->GetMaxKFid();
     const vector<KeyFrame*> vpKFs = pMap->GetAllKeyFrames();
@@ -410,6 +417,8 @@ void Optimizer::FullInertialBA(Map *pMap, int its, const bool bFixLocal, const l
 
     if(pbStopFlag)
         optimizer.setForceStopFlag(pbStopFlag);
+    else if(pAtomicStopFlag)
+        optimizer.setForceStopFlag(pAtomicStopFlag);
 
     int nNonFixed = 0;
 
@@ -718,14 +727,16 @@ void Optimizer::FullInertialBA(Map *pMap, int its, const bool bFixLocal, const l
         }
     }
 
-    if(pbStopFlag)
-        if(*pbStopFlag)
-            return;
-
+    if((pbStopFlag && *pbStopFlag) ||
+       (pAtomicStopFlag && pAtomicStopFlag->load(std::memory_order_relaxed)))
+        return;
 
     optimizer.initializeOptimization();
     optimizer.optimize(its);
 
+    if((pbStopFlag && *pbStopFlag) ||
+       (pAtomicStopFlag && pAtomicStopFlag->load(std::memory_order_relaxed)))
+        return;
 
     // Recover optimized data
     //Keyframes

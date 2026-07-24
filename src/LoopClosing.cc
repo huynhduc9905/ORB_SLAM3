@@ -2330,9 +2330,9 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
                                              unsigned long nGbaGeneration)
 {
     // The worker is owned by LoopClosing and is joined before any object it
-    // touches is destroyed. Cancellation is checked at phase boundaries; do
-    // not pass a shared bool into the optimizer because that creates a data
-    // race with the thread requesting cancellation.
+    // touches is destroyed. Optimizer cancellation observes mbStopGBA through
+    // an atomic-aware g2o stop flag, so shutdown does not race or block on a
+    // full GBA pass.
 #ifdef ORB_SLAM3_SNAPSHOT_TESTING
     InvokeGbaStartHookForTesting();
 #endif
@@ -2355,9 +2355,9 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
     const bool bImuInit = pActiveMap->isImuInitialized();
 
     if(!bImuInit)
-        Optimizer::GlobalBundleAdjustemnt(pActiveMap,10,NULL,nLoopKF,false);
+        Optimizer::GlobalBundleAdjustemnt(pActiveMap,10,NULL,nLoopKF,false,&mbStopGBA);
     else
-        Optimizer::FullInertialBA(pActiveMap,7,false,nLoopKF,NULL);
+        Optimizer::FullInertialBA(pActiveMap,7,false,nLoopKF,NULL,false,1e2,1e6,NULL,NULL,&mbStopGBA);
 
 #ifdef REGISTER_TIMES
     std::chrono::steady_clock::time_point time_EndGBA = std::chrono::steady_clock::now();

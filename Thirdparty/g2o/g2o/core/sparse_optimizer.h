@@ -33,6 +33,7 @@
 #include "sparse_block_matrix.h"
 #include "batch_stats.h"
 
+#include <atomic>
 #include <map>
 
 namespace g2o {
@@ -182,10 +183,15 @@ namespace g2o {
      * sets a variable checked at every iteration to force a user stop. The iteration exits when the variable is true;
      */
     void setForceStopFlag(bool* flag);
+    void setForceStopFlag(const std::atomic<bool>* flag);
     bool* forceStopFlag() const { return _forceStopFlag;};
+    const std::atomic<bool>* atomicForceStopFlag() const { return _atomicForceStopFlag;};
 
     //! if external stop flag is given, return its state. False otherwise
-    bool terminate() {return _forceStopFlag ? (*_forceStopFlag) : false; }
+    bool terminate() {
+      return (_forceStopFlag && *_forceStopFlag) ||
+             (_atomicForceStopFlag && _atomicForceStopFlag->load(std::memory_order_relaxed));
+    }
 
     //! the index mapping of the vertices
     const VertexContainer& indexMapping() const {return _ivMap;}
@@ -288,6 +294,7 @@ namespace g2o {
 
     protected:
     bool* _forceStopFlag;
+    const std::atomic<bool>* _atomicForceStopFlag;
     bool _verbose;
 
     VertexContainer _ivMap;
