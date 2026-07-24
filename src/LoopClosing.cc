@@ -123,6 +123,16 @@ void LoopClosing::LaunchGlobalBundleAdjustment(Map* pActiveMap, unsigned long nL
     // reusing mpThreadGBA; never detach a worker that still references SLAM state.
     StopAndJoinGlobalBundleAdjustment();
 
+    // Do not start a new worker once shutdown/finish has been requested.
+    // System teardown calls RequestFinish() before it joins the loop-closing
+    // dispatcher and only then performs the final GBA reap, so refusing here
+    // guarantees no GBA worker can be launched after that reap and outlive the
+    // LoopClosing/Atlas/map state it references. This also closes the
+    // stop-then-relaunch race: a reset of mbStopGBA plus a fresh worker cannot
+    // be published once a shutdown is in progress.
+    if(CheckFinish())
+        return;
+
     unique_lock<mutex> lock(mMutexGBA);
     mbStopGBA.store(false);
     mbRunningGBA = true;
@@ -152,15 +162,29 @@ void LoopClosing::StopAndJoinGlobalBundleAdjustment()
         unique_lock<mutex> lock(mMutexGBA);
         mbStopGBA.store(true);
         ++mnFullBAIdx;
+
+        // Self-invocation guard: if the GBA worker itself reaches this reaper,
+        // it must not take ownership of its own std::thread. Joining a thread
+        // from within itself throws, and deleting a still-joinable thread calls
+        // std::terminate. The cancellation request is already recorded (stop
+        // flag set, generation bumped), so leave mpThreadGBA in place: the
+        // worker will observe the generation change, publish nothing, and a
+        // non-worker caller (System shutdown, the destructor, or the next
+        // launch) will join and delete it. Do not mark finished here; the
+        // still-running worker records its own completion as it unwinds.
+        if(mpThreadGBA && mpThreadGBA->get_id() == this_thread::get_id())
+            return;
+
         gbaWorker = mpThreadGBA;
         mpThreadGBA = nullptr;
     }
 
     // Joining is intentionally outside mMutexGBA: the worker uses that mutex
-    // when observing cancellation and recording completion.
+    // when observing cancellation and recording completion. gbaWorker is never
+    // the current thread here because self-invocation returned above.
     if(gbaWorker)
     {
-        if(gbaWorker->joinable() && gbaWorker->get_id() != this_thread::get_id())
+        if(gbaWorker->joinable())
             gbaWorker->join();
         delete gbaWorker;
     }
