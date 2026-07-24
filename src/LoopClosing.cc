@@ -1082,18 +1082,24 @@ void LoopClosing::CorrectLoop()
 {
     //cout << "Loop detected!" << endl;
 
-    // Send a stop signal to Local Mapping
-    // Avoid new keyframes are inserted while correcting the loop
-    mpLocalMapper->RequestStop();
-    mpLocalMapper->EmptyQueue(); // Proccess keyframes in the queue
-
-    // If a Global Bundle Adjustment is running, abort it
+    // Abort and reap any running Global Bundle Adjustment BEFORE stopping Local
+    // Mapping. The GBA worker's map-update section calls LocalMapping::Release(),
+    // which clears both mbStopped and mbStopRequested. If we request the stop
+    // first and only then reap the worker, that Release() can clear our request
+    // and leave the isStopped() wait below spinning forever (also hanging
+    // shutdown). Reaping first matches MergeLocal/MergeLocal2 and guarantees the
+    // worker cannot toggle Local Mapping's stop state after we request it.
     if(isRunningGBA())
     {
         cout << "Stoping Global Bundle Adjustment...";
         StopAndJoinGlobalBundleAdjustment();
         cout << "  Done!!" << endl;
     }
+
+    // Send a stop signal to Local Mapping
+    // Avoid new keyframes are inserted while correcting the loop
+    mpLocalMapper->RequestStop();
+    mpLocalMapper->EmptyQueue(); // Proccess keyframes in the queue
 
     // Wait until Local Mapping has effectively stopped
     while(!mpLocalMapper->isStopped())
