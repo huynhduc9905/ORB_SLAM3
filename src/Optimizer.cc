@@ -1837,11 +1837,26 @@ void Optimizer::OptimizeEssentialGraph(KeyFrame* pCurKF, vector<KeyFrame*> &vpFi
     optimizer.setAlgorithm(solver);
 
     Map* pMap = pCurKF->GetMap();
-    const unsigned int nMaxKFid = pMap->GetMaxKFid();
+    // Merge optimization receives keyframes from both maps. IDs are global,
+    // while GetMaxKFid() is per-map, so size ID-indexed state from every
+    // candidate rather than corrupting heap memory on a foreign-map KF.
+    unsigned long nMaxKFid = pMap->GetMaxKFid();
+    const auto includeMaxKeyFrameId = [&nMaxKFid](const vector<KeyFrame*>& keyframes) {
+        for(KeyFrame* pKF : keyframes)
+        {
+            if(pKF)
+                nMaxKFid = max(nMaxKFid, pKF->mnId);
+        }
+    };
+    includeMaxKeyFrameId(vpFixedKFs);
+    includeMaxKeyFrameId(vpFixedCorrectedKFs);
+    includeMaxKeyFrameId(vpNonFixedKFs);
 
     vector<g2o::Sim3,Eigen::aligned_allocator<g2o::Sim3> > vScw(nMaxKFid+1);
     vector<g2o::Sim3,Eigen::aligned_allocator<g2o::Sim3> > vCorrectedSwc(nMaxKFid+1);
     vector<g2o::VertexSim3Expmap*> vpVertices(nMaxKFid+1);
+    set<unsigned long> sIdKF;
+    set<KeyFrame*> optimizedKeyFrames;
 
     vector<bool> vpGoodPose(nMaxKFid+1);
     vector<bool> vpBadPose(nMaxKFid+1);
@@ -1850,7 +1865,7 @@ void Optimizer::OptimizeEssentialGraph(KeyFrame* pCurKF, vector<KeyFrame*> &vpFi
 
     for(KeyFrame* pKFi : vpFixedKFs)
     {
-        if(pKFi->isBad())
+        if(!pKFi || pKFi->isBad() || sIdKF.count(pKFi->mnId))
             continue;
 
         g2o::VertexSim3Expmap* VSim3 = new g2o::VertexSim3Expmap();
@@ -1872,16 +1887,17 @@ void Optimizer::OptimizeEssentialGraph(KeyFrame* pCurKF, vector<KeyFrame*> &vpFi
         optimizer.addVertex(VSim3);
 
         vpVertices[nIDi]=VSim3;
+        optimizedKeyFrames.insert(pKFi);
+        sIdKF.insert(nIDi);
 
         vpGoodPose[nIDi] = true;
         vpBadPose[nIDi] = false;
     }
     Verbose::PrintMess("Opt_Essential: vpFixedKFs loaded", Verbose::VERBOSITY_DEBUG);
 
-    set<unsigned long> sIdKF;
     for(KeyFrame* pKFi : vpFixedCorrectedKFs)
     {
-        if(pKFi->isBad())
+        if(!pKFi || pKFi->isBad() || sIdKF.count(pKFi->mnId))
             continue;
 
         g2o::VertexSim3Expmap* VSim3 = new g2o::VertexSim3Expmap();
@@ -1905,7 +1921,7 @@ void Optimizer::OptimizeEssentialGraph(KeyFrame* pCurKF, vector<KeyFrame*> &vpFi
         optimizer.addVertex(VSim3);
 
         vpVertices[nIDi]=VSim3;
-
+        optimizedKeyFrames.insert(pKFi);
         sIdKF.insert(nIDi);
 
         vpGoodPose[nIDi] = true;
@@ -1914,13 +1930,10 @@ void Optimizer::OptimizeEssentialGraph(KeyFrame* pCurKF, vector<KeyFrame*> &vpFi
 
     for(KeyFrame* pKFi : vpNonFixedKFs)
     {
-        if(pKFi->isBad())
+        if(!pKFi || pKFi->isBad() || sIdKF.count(pKFi->mnId))
             continue;
 
         const int nIDi = pKFi->mnId;
-
-        if(sIdKF.count(nIDi)) // It has already added in the corrected merge KFs
-            continue;
 
         g2o::VertexSim3Expmap* VSim3 = new g2o::VertexSim3Expmap();
 
@@ -1938,24 +1951,30 @@ void Optimizer::OptimizeEssentialGraph(KeyFrame* pCurKF, vector<KeyFrame*> &vpFi
         optimizer.addVertex(VSim3);
 
         vpVertices[nIDi]=VSim3;
-
+        optimizedKeyFrames.insert(pKFi);
         sIdKF.insert(nIDi);
 
         vpGoodPose[nIDi] = false;
         vpBadPose[nIDi] = true;
     }
 
+    const auto hasVertex = [&optimizedKeyFrames, &vpVertices, nMaxKFid](KeyFrame* pKF) {
+        return pKF && !pKF->isBad() && pKF->mnId <= nMaxKFid &&
+               optimizedKeyFrames.count(pKF) && vpVertices[pKF->mnId];
+    };
+
     vector<KeyFrame*> vpKFs;
-    vpKFs.reserve(vpFixedKFs.size() + vpFixedCorrectedKFs.size() + vpNonFixedKFs.size());
-    vpKFs.insert(vpKFs.end(),vpFixedKFs.begin(),vpFixedKFs.end());
-    vpKFs.insert(vpKFs.end(),vpFixedCorrectedKFs.begin(),vpFixedCorrectedKFs.end());
-    vpKFs.insert(vpKFs.end(),vpNonFixedKFs.begin(),vpNonFixedKFs.end());
-    set<KeyFrame*> spKFs(vpKFs.begin(), vpKFs.end());
+    vpKFs.reserve(optimizedKeyFrames.size());
+    for(KeyFrame* pKF : optimizedKeyFrames)
+        vpKFs.push_back(pKF);
 
     const Eigen::Matrix<double,7,7> matLambda = Eigen::Matrix<double,7,7>::Identity();
 
     for(KeyFrame* pKFi : vpKFs)
     {
+        if(!hasVertex(pKFi))
+            continue;
+
         int num_connections = 0;
         const int nIDi = pKFi->mnId;
 
@@ -1963,14 +1982,19 @@ void Optimizer::OptimizeEssentialGraph(KeyFrame* pCurKF, vector<KeyFrame*> &vpFi
         g2o::Sim3 Swi;
 
         if(vpGoodPose[nIDi])
+        {
             correctedSwi = vCorrectedSwc[nIDi];
-        if(vpBadPose[nIDi])
+            Swi = correctedSwi;
+        }
+        else if(vpBadPose[nIDi])
+        {
             Swi = vScw[nIDi].inverse();
+        }
 
         KeyFrame* pParentKFi = pKFi->GetParent();
 
         // Spanning tree edge
-        if(pParentKFi && spKFs.find(pParentKFi) != spKFs.end())
+        if(hasVertex(pParentKFi))
         {
             int nIDj = pParentKFi->mnId;
 
@@ -2009,7 +2033,7 @@ void Optimizer::OptimizeEssentialGraph(KeyFrame* pCurKF, vector<KeyFrame*> &vpFi
         for(set<KeyFrame*>::const_iterator sit=sLoopEdges.begin(), send=sLoopEdges.end(); sit!=send; sit++)
         {
             KeyFrame* pLKF = *sit;
-            if(spKFs.find(pLKF) != spKFs.end() && pLKF->mnId<pKFi->mnId)
+            if(hasVertex(pLKF) && pLKF->mnId<pKFi->mnId)
             {
                 g2o::Sim3 Slw;
                 bool bHasRelation = false;
@@ -2045,7 +2069,7 @@ void Optimizer::OptimizeEssentialGraph(KeyFrame* pCurKF, vector<KeyFrame*> &vpFi
         for(vector<KeyFrame*>::const_iterator vit=vpConnectedKFs.begin(); vit!=vpConnectedKFs.end(); vit++)
         {
             KeyFrame* pKFn = *vit;
-            if(pKFn && pKFn!=pParentKFi && !pKFi->hasChild(pKFn) && !sLoopEdges.count(pKFn) && spKFs.find(pKFn) != spKFs.end())
+            if(hasVertex(pKFn) && pKFn!=pParentKFi && !pKFi->hasChild(pKFn) && !sLoopEdges.count(pKFn))
             {
                 if(!pKFn->isBad() && pKFn->mnId<pKFi->mnId)
                 {
@@ -2095,12 +2119,12 @@ void Optimizer::OptimizeEssentialGraph(KeyFrame* pCurKF, vector<KeyFrame*> &vpFi
     // SE3 Pose Recovering. Sim3:[sR t;0 1] -> SE3:[R t/s;0 1]
     for(KeyFrame* pKFi : vpNonFixedKFs)
     {
-        if(pKFi->isBad())
+        if(!hasVertex(pKFi))
             continue;
 
         const int nIDi = pKFi->mnId;
 
-        g2o::VertexSim3Expmap* VSim3 = static_cast<g2o::VertexSim3Expmap*>(optimizer.vertex(nIDi));
+        g2o::VertexSim3Expmap* VSim3 = vpVertices[nIDi];
         g2o::Sim3 CorrectedSiw =  VSim3->estimate();
         vCorrectedSwc[nIDi]=CorrectedSiw.inverse();
         double s = CorrectedSiw.scale();
@@ -2114,20 +2138,20 @@ void Optimizer::OptimizeEssentialGraph(KeyFrame* pCurKF, vector<KeyFrame*> &vpFi
     // Correct points. Transform to "non-optimized" reference keyframe pose and transform back with optimized pose
     for(MapPoint* pMPi : vpNonCorrectedMPs)
     {
-        if(pMPi->isBad())
+        if(!pMPi || pMPi->isBad())
             continue;
 
         KeyFrame* pRefKF = pMPi->GetReferenceKeyFrame();
-        while(pRefKF->isBad())
+        while(pRefKF && pRefKF->isBad())
         {
-            if(!pRefKF)
-            {
-                Verbose::PrintMess("MP " + to_string(pMPi->mnId) + " without a valid reference KF", Verbose::VERBOSITY_DEBUG);
-                break;
-            }
-
             pMPi->EraseObservation(pRefKF);
             pRefKF = pMPi->GetReferenceKeyFrame();
+        }
+
+        if(!hasVertex(pRefKF))
+        {
+            Verbose::PrintMess("MP " + to_string(pMPi->mnId) + " without a valid optimized reference KF", Verbose::VERBOSITY_DEBUG);
+            continue;
         }
 
         if(vpBadPose[pRefKF->mnId])
