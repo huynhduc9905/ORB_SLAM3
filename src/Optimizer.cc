@@ -1522,6 +1522,7 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
     vector<g2o::Sim3,Eigen::aligned_allocator<g2o::Sim3> > vScw(nMaxKFid+1);
     vector<g2o::Sim3,Eigen::aligned_allocator<g2o::Sim3> > vCorrectedSwc(nMaxKFid+1);
     vector<g2o::VertexSim3Expmap*> vpVertices(nMaxKFid+1);
+    set<KeyFrame*> optimizedKeyFrames;
 
     vector<Eigen::Vector3d> vZvectors(nMaxKFid+1); // For debugging
     Eigen::Vector3d z_vec;
@@ -1565,7 +1566,16 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
         vZvectors[nIDi]=vScw[nIDi].rotation()*z_vec; // For debugging
 
         vpVertices[nIDi]=VSim3;
+        optimizedKeyFrames.insert(pKF);
     }
+
+    // IDs alone are insufficient: different maps can contain the same ID and
+    // culled KFs are deliberately omitted from the optimizer. Every later
+    // vector/edge access must refer to this exact optimized KeyFrame.
+    const auto hasVertex = [&vpVertices, &optimizedKeyFrames, nMaxKFid](KeyFrame* pKF) {
+        return pKF && !pKF->isBad() && pKF->mnId <= nMaxKFid &&
+               optimizedKeyFrames.count(pKF) != 0 && vpVertices[pKF->mnId] != NULL;
+    };
 
 
     set<pair<long unsigned int,long unsigned int> > sInsertedEdges;
@@ -1577,7 +1587,7 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
     for(map<KeyFrame *, set<KeyFrame *> >::const_iterator mit = LoopConnections.begin(), mend=LoopConnections.end(); mit!=mend; mit++)
     {
         KeyFrame* pKF = mit->first;
-        if(!pKF || pKF->isBad())  // fork guard: skip culled/null KF (see loop-revisit crash)
+        if(!hasVertex(pKF))
             continue;
         const long unsigned int nIDi = pKF->mnId;
         const set<KeyFrame*> &spConnections = mit->second;
@@ -1587,7 +1597,7 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
         for(set<KeyFrame*>::const_iterator sit=spConnections.begin(), send=spConnections.end(); sit!=send; sit++)
         {
             KeyFrame* pKFj = *sit;
-            if(!pKFj || pKFj->isBad())  // fork guard: skip culled/null KF
+            if(!hasVertex(pKFj))
                 continue;
             const long unsigned int nIDj = pKFj->mnId;
             if((nIDi!=pCurKF->mnId || nIDj!=pLoopKF->mnId) && pKF->GetWeight(pKFj)<minFeat)
@@ -1616,7 +1626,7 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
     {
         KeyFrame* pKF = vpKFs[i];
 
-        if(!pKF || pKF->isBad())  // fork guard: skip culled/null KF
+        if(!hasVertex(pKF))
             continue;
 
         const int nIDi = pKF->mnId;
@@ -1632,14 +1642,9 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
 
         KeyFrame* pParentKF = pKF->GetParent();
 
-        // Spanning tree edge. Fork guard: skip when the parent's id is outside
-        // the vScw range and it has no NonCorrectedSim3 entry, so we never
-        // index vScw out of bounds (id-gap / cross-map parent).
-        bool parent_in_range = pParentKF &&
-            (NonCorrectedSim3.find(pParentKF) != NonCorrectedSim3.end() ||
-             (pParentKF->mnId >= 0 &&
-              static_cast<unsigned int>(pParentKF->mnId) <= nMaxKFid));
-        if(pParentKF && parent_in_range)
+        // A parent from another map, or one culled after this snapshot, was
+        // not added as a vertex. Skip rather than attach a null/wrong endpoint.
+        if(hasVertex(pParentKF))
         {
             int nIDj = pParentKF->mnId;
 
@@ -1665,7 +1670,7 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
         for(set<KeyFrame*>::const_iterator sit=sLoopEdges.begin(), send=sLoopEdges.end(); sit!=send; sit++)
         {
             KeyFrame* pLKF = *sit;
-            if(!pLKF || pLKF->isBad())  // fork guard: skip culled/null KF
+            if(!hasVertex(pLKF))
                 continue;
             if(pLKF->mnId<pKF->mnId)
             {
@@ -1693,9 +1698,9 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
         for(vector<KeyFrame*>::const_iterator vit=vpConnectedKFs.begin(); vit!=vpConnectedKFs.end(); vit++)
         {
             KeyFrame* pKFn = *vit;
-            if(pKFn && pKFn!=pParentKF && !pKF->hasChild(pKFn) /*&& !sLoopEdges.count(pKFn)*/)
+            if(hasVertex(pKFn) && pKFn!=pParentKF && !pKF->hasChild(pKFn) /*&& !sLoopEdges.count(pKFn)*/)
             {
-                if(!pKFn->isBad() && pKFn->mnId<pKF->mnId)
+                if(pKFn->mnId<pKF->mnId)
                 {
                     if(sInsertedEdges.count(make_pair(min(pKF->mnId,pKFn->mnId),max(pKF->mnId,pKFn->mnId))))
                         continue;
@@ -1721,13 +1726,9 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
             }
         }
 
-        // Inertial edges if inertial. Fork guard: only build the edge when the
-        // previous keyframe is either in NonCorrectedSim3 or its id is within
-        // the vScw range, so we never index vScw out of bounds.
-        if(pKF->bImu && pKF->mPrevKF &&
-           (NonCorrectedSim3.find(pKF->mPrevKF) != NonCorrectedSim3.end() ||
-            (pKF->mPrevKF->mnId >= 0 &&
-             static_cast<unsigned int>(pKF->mPrevKF->mnId) <= nMaxKFid)))
+        // Only add an inertial edge if the predecessor is an exact member of
+        // this optimizer; ID-range checks alone admit cross-map/id-collision KFs.
+        if(pKF->bImu && hasVertex(pKF->mPrevKF))
         {
             g2o::Sim3 Spw;
             LoopClosing::KeyFrameAndPose::const_iterator itp = NonCorrectedSim3.find(pKF->mPrevKF);
@@ -1757,17 +1758,13 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
     for(size_t i=0;i<vpKFs.size();i++)
     {
         KeyFrame* pKFi = vpKFs[i];
+        if(!hasVertex(pKFi))
+            continue;
 
         const int nIDi = pKFi->mnId;
-
-        g2o::VertexSim3Expmap* VSim3 = static_cast<g2o::VertexSim3Expmap*>(optimizer.vertex(nIDi));
-        // Fork guard (SIGSEGV under aggressive KF culling): the vertex-setup
-        // loop skips bad keyframes, so they have no vertex. This recovery loop
-        // iterates the same vpKFs snapshot; a keyframe that was bad (or was
-        // culled between snapshot and here) has optimizer.vertex(nIDi)==nullptr,
-        // and VSim3->estimate() then dereferences null (this==0). Confirmed via
-        // core dump: crash at OptimizeEssentialGraph with rdi=0. Skip null
-        // vertices — those keyframes are not part of the optimized graph.
+        g2o::VertexSim3Expmap* VSim3 = vpVertices[nIDi];
+        // A KeyFrame may have become bad after the map snapshot, leaving it
+        // absent from the optimizer. Never recover a pose for such a vertex.
         if(!VSim3)
             continue;
         g2o::Sim3 CorrectedSiw =  VSim3->estimate();
@@ -1783,29 +1780,28 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
     {
         MapPoint* pMP = vpMPs[i];
 
-        if(pMP->isBad())
+        if(!pMP || pMP->isBad())
             continue;
 
         int nIDr;
         if(pMP->mnCorrectedByKF==pCurKF->mnId)
         {
             nIDr = pMP->mnCorrectedReference;
+            if(nIDr < 0 || static_cast<unsigned int>(nIDr) > nMaxKFid ||
+               !vpVertices[nIDr])
+                continue;
         }
         else
         {
             KeyFrame* pRefKF = pMP->GetReferenceKeyFrame();
-            // Fork guard: a map point can outlive/reference a keyframe that is
-            // not part of this map's vScw range (culled ref KF, or a stale
-            // mnCorrectedReference). Skip rather than index vScw out of bounds.
-            if(!pRefKF)
+            if(!hasVertex(pRefKF))
                 continue;
             nIDr = pRefKF->mnId;
         }
 
-        // Fork guard: vScw/vCorrectedSwc are sized nMaxKFid+1; an out-of-range
-        // reference id (id-gap policy / cross-map reference) would read out of
-        // bounds. Skip the correction for such points.
-        if(nIDr < 0 || static_cast<unsigned int>(nIDr) > nMaxKFid)
+        // The reference must have participated in recovery; otherwise its
+        // vScw/vCorrectedSwc slots do not describe an optimized transform.
+        if(!vpVertices[nIDr])
             continue;
 
         g2o::Sim3 Srw = vScw[nIDr];
@@ -5356,13 +5352,14 @@ void Optimizer::OptimizeEssentialGraph4DoF(Map* pMap, KeyFrame* pLoopKF, KeyFram
     vector<g2o::Sim3,Eigen::aligned_allocator<g2o::Sim3> > vCorrectedSwc(nMaxKFid+1);
 
     vector<VertexPose4DoF*> vpVertices(nMaxKFid+1);
+    set<KeyFrame*> optimizedKeyFrames;
 
     const int minFeat = 100;
     // Set KeyFrame vertices
     for(size_t i=0, iend=vpKFs.size(); i<iend;i++)
     {
         KeyFrame* pKF = vpKFs[i];
-        if(pKF->isBad())
+        if(!pKF || pKF->isBad() || pKF->mnId > nMaxKFid)
             continue;
 
         VertexPose4DoF* V4DoF;
@@ -5396,7 +5393,16 @@ void Optimizer::OptimizeEssentialGraph4DoF(Map* pMap, KeyFrame* pLoopKF, KeyFram
 
         optimizer.addVertex(V4DoF);
         vpVertices[nIDi]=V4DoF;
+        optimizedKeyFrames.insert(pKF);
     }
+
+    // Do not accept a same-range ID as proof of graph membership: maps can
+    // overlap IDs and bad KFs are intentionally omitted from this optimizer.
+    const auto hasVertex = [&vpVertices, &optimizedKeyFrames, nMaxKFid](KeyFrame* pKF) {
+        return pKF && !pKF->isBad() && pKF->mnId <= nMaxKFid &&
+               optimizedKeyFrames.count(pKF) != 0 && vpVertices[pKF->mnId] != NULL;
+    };
+
     set<pair<long unsigned int,long unsigned int> > sInsertedEdges;
 
     // Edge used in posegraph has still 6Dof, even if updates of camera poses are just in 4DoF
@@ -5410,14 +5416,19 @@ void Optimizer::OptimizeEssentialGraph4DoF(Map* pMap, KeyFrame* pLoopKF, KeyFram
     for(map<KeyFrame *, set<KeyFrame *> >::const_iterator mit = LoopConnections.begin(), mend=LoopConnections.end(); mit!=mend; mit++)
     {
         KeyFrame* pKF = mit->first;
+        if(!hasVertex(pKF))
+            continue;
         const long unsigned int nIDi = pKF->mnId;
         const set<KeyFrame*> &spConnections = mit->second;
         const g2o::Sim3 Siw = vScw[nIDi];
 
         for(set<KeyFrame*>::const_iterator sit=spConnections.begin(), send=spConnections.end(); sit!=send; sit++)
         {
-            const long unsigned int nIDj = (*sit)->mnId;
-            if((nIDi!=pCurKF->mnId || nIDj!=pLoopKF->mnId) && pKF->GetWeight(*sit)<minFeat)
+            KeyFrame* pKFj = *sit;
+            if(!hasVertex(pKFj))
+                continue;
+            const long unsigned int nIDj = pKFj->mnId;
+            if((nIDi!=pCurKF->mnId || nIDj!=pLoopKF->mnId) && pKF->GetWeight(pKFj)<minFeat)
                 continue;
 
             const g2o::Sim3 Sjw = vScw[nIDj];
@@ -5443,6 +5454,8 @@ void Optimizer::OptimizeEssentialGraph4DoF(Map* pMap, KeyFrame* pLoopKF, KeyFram
     for(size_t i=0, iend=vpKFs.size(); i<iend; i++)
     {
         KeyFrame* pKF = vpKFs[i];
+        if(!hasVertex(pKF))
+            continue;
 
         const int nIDi = pKF->mnId;
 
@@ -5456,9 +5469,10 @@ void Optimizer::OptimizeEssentialGraph4DoF(Map* pMap, KeyFrame* pLoopKF, KeyFram
         else
             Siw = vScw[nIDi];
 
-        // 1.1.0 Spanning tree edge
-        KeyFrame* pParentKF = static_cast<KeyFrame*>(NULL);
-        if(pParentKF)
+        // Spanning-tree edge is valid only when the parent was added as the
+        // exact KeyFrame vertex for this optimization.
+        KeyFrame* pParentKF = pKF->GetParent();
+        if(hasVertex(pParentKF))
         {
             int nIDj = pParentKF->mnId;
 
@@ -5486,7 +5500,7 @@ void Optimizer::OptimizeEssentialGraph4DoF(Map* pMap, KeyFrame* pLoopKF, KeyFram
 
         // 1.1.1 Inertial edges
         KeyFrame* prevKF = pKF->mPrevKF;
-        if(prevKF)
+        if(hasVertex(prevKF))
         {
             int nIDj = prevKF->mnId;
 
@@ -5517,6 +5531,8 @@ void Optimizer::OptimizeEssentialGraph4DoF(Map* pMap, KeyFrame* pLoopKF, KeyFram
         for(set<KeyFrame*>::const_iterator sit=sLoopEdges.begin(), send=sLoopEdges.end(); sit!=send; sit++)
         {
             KeyFrame* pLKF = *sit;
+            if(!hasVertex(pLKF))
+                continue;
             if(pLKF->mnId<pKF->mnId)
             {
                 g2o::Sim3 Swl;
@@ -5547,9 +5563,9 @@ void Optimizer::OptimizeEssentialGraph4DoF(Map* pMap, KeyFrame* pLoopKF, KeyFram
         for(vector<KeyFrame*>::const_iterator vit=vpConnectedKFs.begin(); vit!=vpConnectedKFs.end(); vit++)
         {
             KeyFrame* pKFn = *vit;
-            if(pKFn && pKFn!=pParentKF && pKFn!=prevKF && pKFn!=pKF->mNextKF && !pKF->hasChild(pKFn) && !sLoopEdges.count(pKFn))
+            if(hasVertex(pKFn) && pKFn!=pParentKF && pKFn!=prevKF && pKFn!=pKF->mNextKF && !pKF->hasChild(pKFn) && !sLoopEdges.count(pKFn))
             {
-                if(!pKFn->isBad() && pKFn->mnId<pKF->mnId)
+                if(pKFn->mnId<pKF->mnId)
                 {
                     if(sInsertedEdges.count(make_pair(min(pKF->mnId,pKFn->mnId),max(pKF->mnId,pKFn->mnId))))
                         continue;
@@ -5588,10 +5604,13 @@ void Optimizer::OptimizeEssentialGraph4DoF(Map* pMap, KeyFrame* pLoopKF, KeyFram
     for(size_t i=0;i<vpKFs.size();i++)
     {
         KeyFrame* pKFi = vpKFs[i];
+        if(!hasVertex(pKFi))
+            continue;
 
         const int nIDi = pKFi->mnId;
-
-        VertexPose4DoF* Vi = static_cast<VertexPose4DoF*>(optimizer.vertex(nIDi));
+        VertexPose4DoF* Vi = vpVertices[nIDi];
+        if(!Vi)
+            continue;
         Eigen::Matrix3d Ri = Vi->estimate().Rcw[0];
         Eigen::Vector3d ti = Vi->estimate().tcw[0];
 
@@ -5607,13 +5626,17 @@ void Optimizer::OptimizeEssentialGraph4DoF(Map* pMap, KeyFrame* pLoopKF, KeyFram
     {
         MapPoint* pMP = vpMPs[i];
 
-        if(pMP->isBad())
+        if(!pMP || pMP->isBad())
             continue;
 
-        int nIDr;
-
         KeyFrame* pRefKF = pMP->GetReferenceKeyFrame();
-        nIDr = pRefKF->mnId;
+        if(!hasVertex(pRefKF))
+            continue;
+        const int nIDr = pRefKF->mnId;
+
+        // A recovered transform exists only for vertices in this optimizer.
+        if(!vpVertices[nIDr])
+            continue;
 
         g2o::Sim3 Srw = vScw[nIDr];
         g2o::Sim3 correctedSwr = vCorrectedSwc[nIDr];

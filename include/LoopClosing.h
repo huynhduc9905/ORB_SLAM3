@@ -29,6 +29,8 @@
 #include "KeyFrameDatabase.h"
 
 #include <boost/algorithm/string.hpp>
+#include <atomic>
+#include <functional>
 #include <thread>
 #include <mutex>
 #include "Thirdparty/g2o/g2o/types/types_seven_dof_expmap.h"
@@ -53,6 +55,7 @@ public:
 public:
 
     LoopClosing(Atlas* pAtlas, KeyFrameDatabase* pDB, ORBVocabulary* pVoc,const bool bFixScale, const bool bActiveLC);
+    ~LoopClosing();
 
     void SetTracker(Tracking* pTracker);
 
@@ -66,8 +69,18 @@ public:
     void RequestReset();
     void RequestResetActiveMap(Map* pMap);
 
-    // This function will run in a separate thread
-    void RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoopKF);
+    // This function will run in a separate thread. The generation prevents a
+    // completed but superseded worker from applying stale corrections.
+    void RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoopKF,
+                                   unsigned long nGbaGeneration);
+
+    // Request cancellation and reap the owned GBA worker. This must complete
+    // before LoopClosing, LocalMapping, Atlas, or map resources are destroyed.
+    void StopAndJoinGlobalBundleAdjustment();
+
+#ifdef ORB_SLAM3_SNAPSHOT_TESTING
+    static void SetGlobalBundleAdjustmentStartHookForTesting(std::function<void()> hook);
+#endif
 
     bool isRunningGBA(){
         unique_lock<std::mutex> lock(mMutexGBA);
@@ -119,6 +132,10 @@ public:
 protected:
 
     bool CheckNewKeyFrames();
+
+    void LaunchGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoopKF);
+    bool ShouldAbortGlobalBundleAdjustment(unsigned long nGbaGeneration);
+    void MarkGlobalBundleAdjustmentFinished();
 
 
     //Methods to implement the new place recognition algorithm
@@ -215,7 +232,7 @@ protected:
     // Variables related to Global Bundle Adjustment
     bool mbRunningGBA;
     bool mbFinishedGBA;
-    bool mbStopGBA;
+    std::atomic<bool> mbStopGBA;
     std::mutex mMutexGBA;
     std::thread* mpThreadGBA;
 
