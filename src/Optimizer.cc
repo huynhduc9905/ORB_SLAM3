@@ -1310,6 +1310,16 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
 
             if(!pKFi->isBad() && pKFi->GetMap() == pCurrentMap)
             {
+                // The KeyFrame vertex exists only if pKFi was added as a local
+                // or fixed camera above. Observation sets can change between the
+                // fixed-camera pass and here (concurrent local mapping / loop
+                // closing), so a now-qualifying observer may have no vertex.
+                // Adding an edge to a missing (NULL) vertex makes g2o dereference
+                // a null vertex in HyperGraph::addEdge and segfault in the edge
+                // set insert. Skip the observation when the vertex is absent.
+                if(optimizer.vertex(pKFi->mnId) == nullptr)
+                    continue;
+
                 const int leftIndex = get<0>(mit->second);
 
                 // Monocular observation
