@@ -1317,7 +1317,12 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
                 // Adding an edge to a missing (NULL) vertex makes g2o dereference
                 // a null vertex in HyperGraph::addEdge and segfault in the edge
                 // set insert. Skip the observation when the vertex is absent.
-                if(optimizer.vertex(pKFi->mnId) == nullptr)
+                //
+                // The id > maxKFid test must come first: MapPoint vertices are
+                // numbered pMP->mnId + maxKFid + 1, so an observer whose id
+                // exceeds maxKFid can collide with a MapPoint vertex and return
+                // a non-null vertex of the wrong type/dimension.
+                if(pKFi->mnId > maxKFid || optimizer.vertex(pKFi->mnId) == nullptr)
                     continue;
 
                 const int leftIndex = get<0>(mit->second);
@@ -1776,6 +1781,11 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
     unique_lock<mutex> lock(pMap->mMutexMapUpdate);
 
     // SE3 Pose Recovering. Sim3:[sR t;0 1] -> SE3:[R t/s;0 1]
+    // Only IDs recorded here have a meaningful vCorrectedSwc entry. A vertex
+    // existing in vpVertices is NOT sufficient: a KeyFrame that went bad after
+    // the map snapshot is skipped below, leaving its vCorrectedSwc slot at
+    // identity, which would silently teleport any MapPoint referencing it.
+    vector<bool> vbRecovered(nMaxKFid+1, false);
     for(size_t i=0;i<vpKFs.size();i++)
     {
         KeyFrame* pKFi = vpKFs[i];
@@ -1784,12 +1794,9 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
 
         const int nIDi = pKFi->mnId;
         g2o::VertexSim3Expmap* VSim3 = vpVertices[nIDi];
-        // A KeyFrame may have become bad after the map snapshot, leaving it
-        // absent from the optimizer. Never recover a pose for such a vertex.
-        if(!VSim3)
-            continue;
         g2o::Sim3 CorrectedSiw =  VSim3->estimate();
         vCorrectedSwc[nIDi]=CorrectedSiw.inverse();
+        vbRecovered[nIDi] = true;
         double s = CorrectedSiw.scale();
 
         Sophus::SE3f Tiw(CorrectedSiw.rotation().cast<float>(), CorrectedSiw.translation().cast<float>() / s);
@@ -1808,8 +1815,7 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
         if(pMP->mnCorrectedByKF==pCurKF->mnId)
         {
             nIDr = pMP->mnCorrectedReference;
-            if(nIDr < 0 || static_cast<unsigned int>(nIDr) > nMaxKFid ||
-               !vpVertices[nIDr])
+            if(nIDr < 0 || static_cast<unsigned int>(nIDr) > nMaxKFid)
                 continue;
         }
         else
@@ -1820,9 +1826,10 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
             nIDr = pRefKF->mnId;
         }
 
-        // The reference must have participated in recovery; otherwise its
-        // vScw/vCorrectedSwc slots do not describe an optimized transform.
-        if(!vpVertices[nIDr])
+        // The reference must have been recovered above; otherwise its
+        // vCorrectedSwc slot is still identity and does not describe an
+        // optimized transform.
+        if(!vbRecovered[nIDr])
             continue;
 
         g2o::Sim3 Srw = vScw[nIDr];
@@ -1999,18 +2006,18 @@ void Optimizer::OptimizeEssentialGraph(KeyFrame* pCurKF, vector<KeyFrame*> &vpFi
         int num_connections = 0;
         const int nIDi = pKFi->mnId;
 
-        g2o::Sim3 correctedSwi;
-        g2o::Sim3 Swi;
+        // A keyframe can be flagged good AND bad at once (vpFixedCorrectedKFs):
+        // it has both an after-merge pose and a before-merge pose. Keep the two
+        // frames in separate variables and pick the one matching each edge's
+        // relation below. Collapsing these into a single variable silently mixes
+        // merge frames in the edge measurements.
+        g2o::Sim3 correctedSwi;  // after-merge (corrected) frame
+        g2o::Sim3 Swi;           // before-merge (non-corrected) frame
 
         if(vpGoodPose[nIDi])
-        {
             correctedSwi = vCorrectedSwc[nIDi];
-            Swi = correctedSwi;
-        }
-        else if(vpBadPose[nIDi])
-        {
+        if(vpBadPose[nIDi])
             Swi = vScw[nIDi].inverse();
-        }
 
         KeyFrame* pParentKFi = pKFi->GetParent();
 
@@ -2020,22 +2027,25 @@ void Optimizer::OptimizeEssentialGraph(KeyFrame* pCurKF, vector<KeyFrame*> &vpFi
             int nIDj = pParentKFi->mnId;
 
             g2o::Sim3 Sjw;
+            g2o::Sim3 Swi_edge;
             bool bHasRelation = false;
 
             if(vpGoodPose[nIDi] && vpGoodPose[nIDj])
             {
                 Sjw = vCorrectedSwc[nIDj].inverse();
+                Swi_edge = correctedSwi;   // both endpoints in the corrected frame
                 bHasRelation = true;
             }
             else if(vpBadPose[nIDi] && vpBadPose[nIDj])
             {
                 Sjw = vScw[nIDj];
+                Swi_edge = Swi;            // both endpoints in the before-merge frame
                 bHasRelation = true;
             }
 
             if(bHasRelation)
             {
-                g2o::Sim3 Sji = Sjw * Swi;
+                g2o::Sim3 Sji = Sjw * Swi_edge;
 
                 g2o::EdgeSim3* e = new g2o::EdgeSim3();
                 e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(nIDj)));
@@ -2057,23 +2067,26 @@ void Optimizer::OptimizeEssentialGraph(KeyFrame* pCurKF, vector<KeyFrame*> &vpFi
             if(hasVertex(pLKF) && pLKF->mnId<pKFi->mnId)
             {
                 g2o::Sim3 Slw;
+                g2o::Sim3 Swi_edge;
                 bool bHasRelation = false;
 
                 if(vpGoodPose[nIDi] && vpGoodPose[pLKF->mnId])
                 {
                     Slw = vCorrectedSwc[pLKF->mnId].inverse();
+                    Swi_edge = correctedSwi;   // corrected frame on both ends
                     bHasRelation = true;
                 }
                 else if(vpBadPose[nIDi] && vpBadPose[pLKF->mnId])
                 {
                     Slw = vScw[pLKF->mnId];
+                    Swi_edge = Swi;            // before-merge frame on both ends
                     bHasRelation = true;
                 }
 
 
                 if(bHasRelation)
                 {
-                    g2o::Sim3 Sli = Slw * Swi;
+                    g2o::Sim3 Sli = Slw * Swi_edge;
                     g2o::EdgeSim3* el = new g2o::EdgeSim3();
                     el->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pLKF->mnId)));
                     el->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(nIDi)));
@@ -2096,22 +2109,25 @@ void Optimizer::OptimizeEssentialGraph(KeyFrame* pCurKF, vector<KeyFrame*> &vpFi
                 {
 
                     g2o::Sim3 Snw =  vScw[pKFn->mnId];
+                    g2o::Sim3 Swi_edge;
                     bool bHasRelation = false;
 
                     if(vpGoodPose[nIDi] && vpGoodPose[pKFn->mnId])
                     {
                         Snw = vCorrectedSwc[pKFn->mnId].inverse();
+                        Swi_edge = correctedSwi;   // corrected frame on both ends
                         bHasRelation = true;
                     }
                     else if(vpBadPose[nIDi] && vpBadPose[pKFn->mnId])
                     {
                         Snw = vScw[pKFn->mnId];
+                        Swi_edge = Swi;            // before-merge frame on both ends
                         bHasRelation = true;
                     }
 
                     if(bHasRelation)
                     {
-                        g2o::Sim3 Sni = Snw * Swi;
+                        g2o::Sim3 Sni = Snw * Swi_edge;
 
                         g2o::EdgeSim3* en = new g2o::EdgeSim3();
                         en->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKFn->mnId)));

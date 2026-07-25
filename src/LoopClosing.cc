@@ -27,6 +27,7 @@
 #include "G2oTypes.h"
 
 #include<mutex>
+#include<system_error>
 #include<thread>
 
 
@@ -182,10 +183,20 @@ void LoopClosing::StopAndJoinGlobalBundleAdjustment()
     // Joining is intentionally outside mMutexGBA: the worker uses that mutex
     // when observing cancellation and recording completion. gbaWorker is never
     // the current thread here because self-invocation returned above.
+    // System::Cleanup is noexcept, so an escaping std::system_error from join()
+    // would call std::terminate. Swallow it: the thread object is still deleted
+    // and completion is recorded below.
     if(gbaWorker)
     {
-        if(gbaWorker->joinable())
-            gbaWorker->join();
+        try
+        {
+            if(gbaWorker->joinable())
+                gbaWorker->join();
+        }
+        catch(const std::system_error&)
+        {
+            // Nothing actionable during teardown; fall through to cleanup.
+        }
         delete gbaWorker;
     }
 
