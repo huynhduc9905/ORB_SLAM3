@@ -353,10 +353,18 @@ void MapPoint::ComputeDistinctiveDescriptors()
             tuple<int,int> indexes = mit -> second;
             int leftIndex = get<0>(indexes), rightIndex = get<1>(indexes);
 
-            if(leftIndex != -1){
+            // Bounds-check against the descriptor matrix. A KeyFrame can be
+            // culled/cleared concurrently (Local Mapping runs while loop
+            // closing drains the queue via EmptyQueue), leaving a stale
+            // observation index past mDescriptors.rows. cv::Mat::row then
+            // throws cv::Exception, which is uncaught here and terminates the
+            // process. Skip unreadable rows instead.
+            const int nDescRows = pKF->mDescriptors.rows;
+
+            if(leftIndex != -1 && leftIndex < nDescRows){
                 vDescriptors.push_back(pKF->mDescriptors.row(leftIndex));
             }
-            if(rightIndex != -1){
+            if(rightIndex != -1 && rightIndex < nDescRows){
                 vDescriptors.push_back(pKF->mDescriptors.row(rightIndex));
             }
         }
