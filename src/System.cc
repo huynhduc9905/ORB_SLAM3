@@ -334,6 +334,12 @@ void System::Cleanup(bool destroyResources) noexcept
 
     joinAndDelete(mptLocalMapping);
     joinAndDelete(mptLoopClosing);
+
+    // The loop-closing dispatcher can exit while its separately launched GBA
+    // worker is still running. Reap it before viewer teardown or destruction
+    // of LoopClosing, LocalMapping, Atlas, and every map-owned KeyFrame/Point.
+    if(mpLoopCloser)
+        mpLoopCloser->StopAndJoinGlobalBundleAdjustment();
 #ifndef ORB_SLAM3_HEADLESS
     joinAndDelete(mptViewer);
 #endif

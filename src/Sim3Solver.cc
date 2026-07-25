@@ -362,10 +362,25 @@ void Sim3Solver::ComputeSim3(Eigen::Matrix3f &P1, Eigen::Matrix3f &P2)
     Eigen::Vector3f vec = evec.block<3,1>(1,maxIndex); //extract imaginary part of the quaternion (sin*axis)
 
     // Rotation angle. sin is the norm of the imaginary part, cos is the real part
-    double ang=atan2(vec.norm(),evec(0,maxIndex));
+    const float vecNorm = vec.norm();
+    const double ang = atan2((double)vecNorm, (double)evec(0,maxIndex));
 
-    vec = 2*ang*vec/vec.norm(); //Angle-axis representation. quaternion angle is the half
-    mR12i = Sophus::SO3f::exp(vec).matrix();
+    // Degenerate/near-identity or non-finite hypothesis guard. A near-zero
+    // imaginary part means the rotation axis is undefined; dividing by its
+    // ~zero norm produces NaN, and Sophus::SO3::exp aborts the whole process on
+    // a NaN tangent (SOPHUS_ENSURE -> std::abort). A degenerate RANSAC sample
+    // (collinear/coincident points, or NaN map points) must simply yield a
+    // rejected hypothesis, never crash. Fall back to identity rotation; the
+    // resulting transform produces no inliers and is discarded by CheckInliers.
+    if(!vec.allFinite() || !std::isfinite(ang) || vecNorm < 1e-9f)
+    {
+        mR12i = Eigen::Matrix3f::Identity();
+    }
+    else
+    {
+        vec = 2.0f * static_cast<float>(ang) * vec / vecNorm; //Angle-axis representation. quaternion angle is the half
+        mR12i = Sophus::SO3f::exp(vec).matrix();
+    }
 
     // Step 5: Rotate set 2
     Eigen::Matrix3f P3 = mR12i*Pr2;
@@ -382,7 +397,13 @@ void Sim3Solver::ComputeSim3(Eigen::Matrix3f &P1, Eigen::Matrix3f &P2)
         aux_P3 = P3.array() * P3.array();
         double den = aux_P3.sum();
 
-        ms12i = nom/den;
+        // Guard a near-zero denominator (points coincident with the centroid):
+        // nom/den would be inf/NaN and poison the transform. A unit scale keeps
+        // the hypothesis finite so it is simply rejected by CheckInliers.
+        if(den > 1e-12 && std::isfinite(nom/den))
+            ms12i = static_cast<float>(nom/den);
+        else
+            ms12i = 1.0f;
     }
     else
         ms12i = 1.0f;
