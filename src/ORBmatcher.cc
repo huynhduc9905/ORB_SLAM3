@@ -2065,17 +2065,14 @@ namespace ORB_SLAM3
         const int *pa = a.ptr<int32_t>();
         const int *pb = b.ptr<int32_t>();
 
-        int dist=0;
-
-        for(int i=0; i<8; i++, pa++, pb++)
-        {
-            unsigned  int v = *pa ^ *pb;
-            v = v - ((v >> 1) & 0x55555555);
-            v = (v & 0x33333333) + ((v >> 2) & 0x33333333);
-            dist += (((v + (v >> 4)) & 0xF0F0F0F) * 0x1010101) >> 24;
-        }
-
-        return dist;
+        return __builtin_popcount(pa[0] ^ pb[0]) +
+               __builtin_popcount(pa[1] ^ pb[1]) +
+               __builtin_popcount(pa[2] ^ pb[2]) +
+               __builtin_popcount(pa[3] ^ pb[3]) +
+               __builtin_popcount(pa[4] ^ pb[4]) +
+               __builtin_popcount(pa[5] ^ pb[5]) +
+               __builtin_popcount(pa[6] ^ pb[6]) +
+               __builtin_popcount(pa[7] ^ pb[7]);
     }
 
 } //namespace ORB_SLAM

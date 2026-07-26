@@ -2185,9 +2185,8 @@ void Optimizer::OptimizeEssentialGraph(KeyFrame* pCurKF, vector<KeyFrame*> &vpFi
             pRefKF = pMPi->GetReferenceKeyFrame();
         }
 
-        if(!hasVertex(pRefKF))
+        if(!pRefKF || pRefKF->isBad() || !hasVertex(pRefKF) || pRefKF->mnId < 0 || pRefKF->mnId >= (int)vpBadPose.size())
         {
-            Verbose::PrintMess("MP " + to_string(pMPi->mnId) + " without a valid optimized reference KF", Verbose::VERBOSITY_DEBUG);
             continue;
         }
 
