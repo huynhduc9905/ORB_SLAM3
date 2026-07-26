@@ -28,6 +28,7 @@ find_package(Pangolin QUIET)
 if(Pangolin_FOUND)
     add_definitions(-DHAVE_PANGOLIN)
 endif()
+add_definitions(-DREGISTER_TIMES)
 find_package(realsense2)
 
 include_directories(

@@ -150,6 +150,20 @@ int main(int argc, char **argv) {
     float p95 = nTracked > 0 ? sorted[static_cast<size_t>(nTracked * 0.95)] : 0.0f;
     float avg_fps = mean_t > 0.0f ? 1000.0f / mean_t : 0.0f;
 
+#ifdef REGISTER_TIMES
+    auto tracker = SLAM.GetTracker();
+    auto compute_mean = [](const vector<double>& v) {
+        if(v.empty()) return 0.0;
+        double sum = 0.0;
+        for(double x : v) sum += x;
+        return sum / v.size();
+    };
+    double mean_orb_ext = compute_mean(tracker->vdORBExtract_ms);
+    double mean_stereo_match = compute_mean(tracker->vdStereoMatch_ms);
+    double mean_pose_pred = compute_mean(tracker->vdPosePred_ms);
+    double mean_lm_track = compute_mean(tracker->vdLMTrack_ms);
+#endif
+
     ofstream out(strOutputFile);
     out << "{\n";
     out << "  \"dataset\": \"" << strDatasetPath << "\",\n";
@@ -164,6 +178,12 @@ int main(int argc, char **argv) {
     out << "  \"p90_latency_ms\": " << setprecision(2) << p90 << ",\n";
     out << "  \"p95_latency_ms\": " << setprecision(2) << p95 << ",\n";
     out << "  \"avg_fps\": " << setprecision(2) << avg_fps << ",\n";
+#ifdef REGISTER_TIMES
+    out << "  \"stage_orb_extract_ms\": " << setprecision(2) << mean_orb_ext << ",\n";
+    out << "  \"stage_stereo_match_ms\": " << setprecision(2) << mean_stereo_match << ",\n";
+    out << "  \"stage_pose_pred_ms\": " << setprecision(2) << mean_pose_pred << ",\n";
+    out << "  \"stage_local_map_track_ms\": " << setprecision(2) << mean_lm_track << ",\n";
+#endif
     out << "  \"peak_rss_mb\": " << setprecision(1) << (peak_rss_kb / 1024.0) << "\n";
     out << "}\n";
     out.close();
@@ -181,8 +201,17 @@ int main(int argc, char **argv) {
     cout << "P90 Latency:          " << setprecision(2) << p90 << " ms" << endl;
     cout << "P95 Latency:          " << setprecision(2) << p95 << " ms" << endl;
     cout << "AVG TRACKING FREQ:    " << setprecision(2) << avg_fps << " Hz (FPS)" << endl;
-    cout << "Peak RSS Memory:      " << setprecision(1) << (peak_rss_kb / 1024.0) << " MB" << endl;
+#ifdef REGISTER_TIMES
+    cout << "--------------------------------------------------" << endl;
+    cout << "  PER-FUNCTION STAGE TIMING BREAKDOWN" << endl;
+    cout << "--------------------------------------------------" << endl;
+    cout << "1. ORB Feature Extraction:   " << setprecision(2) << mean_orb_ext << " ms (" << setprecision(1) << (mean_orb_ext / mean_t * 100.0) << "%)" << endl;
+    cout << "2. Epipolar Stereo Matching: " << setprecision(2) << mean_stereo_match << " ms (" << setprecision(1) << (mean_stereo_match / mean_t * 100.0) << "%)" << endl;
+    cout << "3. Pose Motion Prediction:  " << setprecision(2) << mean_pose_pred << " ms (" << setprecision(1) << (mean_pose_pred / mean_t * 100.0) << "%)" << endl;
+    cout << "4. Local Map Projection & BA: " << setprecision(2) << mean_lm_track << " ms (" << setprecision(1) << (mean_lm_track / mean_t * 100.0) << "%)" << endl;
+#endif
     cout << "==================================================" << endl;
+    cout << "Peak RSS Memory:      " << setprecision(1) << (peak_rss_kb / 1024.0) << " MB" << endl;
     cout << "Benchmark JSON saved to: " << strOutputFile << endl;
     exit(0);
     return 0;
