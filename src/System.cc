@@ -20,8 +20,12 @@
 
 #include "System.h"
 #include "Converter.h"
+#include "VisualizationSource.h"
+#include "WebViewerBackend.h"
 #include <thread>
+#ifdef HAVE_PANGOLIN
 #include <pangolin/pangolin.h>
+#endif
 #include <iomanip>
 #include <openssl/md5.h>
 #include <boost/serialization/base_object.hpp>
@@ -276,13 +280,49 @@ try
 
     //Initialize the Viewer thread and launch
     if(bUseViewer)
-    //if(false) // TODO
     {
+#ifdef HAVE_PANGOLIN
         mpViewer = new Viewer(this, mpFrameDrawer,mpMapDrawer,mpTracker,strSettingsFile,settings_);
         mptViewer = new thread(&Viewer::Run, mpViewer);
         mpTracker->SetViewer(mpViewer);
         mpLoopCloser->mpViewer = mpViewer;
         mpViewer->both = mpFrameDrawer->both;
+#endif
+    }
+
+    // Initialize WebViewer backend
+    bool webEnabled = true;
+    int webPort = 8080;
+    std::string webBindAddr = "0.0.0.0";
+    std::string webStaticRoot = "./web_viewer/dist";
+
+    cv::FileNode webNode = fsSettings["WebViewer.Enabled"];
+    if(!webNode.empty()) {
+        webEnabled = static_cast<int>(webNode) != 0;
+    }
+    webNode = fsSettings["WebViewer.Port"];
+    if(!webNode.empty()) {
+        webPort = static_cast<int>(webNode);
+    }
+    webNode = fsSettings["WebViewer.BindAddress"];
+    if(!webNode.empty()) {
+        webBindAddr = static_cast<std::string>(webNode);
+    }
+    webNode = fsSettings["WebViewer.StaticRoot"];
+    if(!webNode.empty()) {
+        webStaticRoot = static_cast<std::string>(webNode);
+    }
+
+    if (webEnabled) {
+        mpVisSource = std::make_shared<VisualizationSource>();
+        WebViewerConfig cfg;
+        cfg.enabled = true;
+        cfg.bind_address = webBindAddr;
+        cfg.port = webPort;
+        cfg.static_root = webStaticRoot;
+
+        mpWebBackend = std::make_unique<WebViewerBackend>(mpVisSource, cfg);
+        mpWebBackend->Start();
     }
 
 #ifdef ORB_SLAM3_SNAPSHOT_TESTING

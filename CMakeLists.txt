@@ -12,34 +12,17 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall   -O3")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -march=native")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native")
 
-# Check C++11 or C++0x support
-include(CheckCXXCompilerFlag)
-CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
-CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
-if(COMPILER_SUPPORTS_CXX11)
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-   add_definitions(-DCOMPILEDWITHC11)
-   message(STATUS "Using flag -std=c++11.")
-elseif(COMPILER_SUPPORTS_CXX0X)
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
-   add_definitions(-DCOMPILEDWITHC0X)
-   message(STATUS "Using flag -std=c++0x.")
-else()
-   message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
-endif()
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)
 
-find_package(OpenCV 4.4)
-   if(NOT OpenCV_FOUND)
-      message(FATAL_ERROR "OpenCV > 4.4 not found.")
-   endif()
-
-MESSAGE("OPENCV VERSION:")
-MESSAGE(${OpenCV_VERSION})
-
+find_package(OpenCV 4 REQUIRED)
 find_package(Eigen3 3.1.0 REQUIRED)
-find_package(Pangolin REQUIRED)
+find_package(Pangolin QUIET)
+if(Pangolin_FOUND)
+    add_definitions(-DHAVE_PANGOLIN)
+endif()
 find_package(realsense2)
 
 include_directories(
@@ -82,6 +65,9 @@ src/GeometricTools.cc
 src/TwoViewReconstruction.cc
 src/Config.cc
 src/Settings.cc
+src/VisualizationSource.cc
+src/WebViewerProtocol.cc
+src/WebViewerBackend.cc
 include/System.h
 include/Tracking.h
 include/LocalMapping.h
@@ -111,9 +97,15 @@ include/GeometricTools.h
 include/TwoViewReconstruction.h
 include/SerializationUtils.h
 include/Config.h
-include/Settings.h)
+include/Settings.h
+include/VisualizationTypes.h
+include/VisualizationSource.h
+include/WebViewerProtocol.h
+include/WebViewerBackend.h)
 
 add_subdirectory(Thirdparty/g2o)
+
+find_package(Boost REQUIRED COMPONENTS thread filesystem serialization)
 
 target_link_libraries(${PROJECT_NAME}
 ${OpenCV_LIBS}
@@ -121,7 +113,10 @@ ${EIGEN3_LIBS}
 ${Pangolin_LIBRARIES}
 ${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
 ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
--lboost_serialization
+Boost::thread
+Boost::filesystem
+Boost::serialization
+-lssl
 -lcrypto
 )
 
@@ -214,6 +209,15 @@ if(realsense2_FOUND)
             Examples/Monocular/mono_realsense_D435i.cc)
     target_link_libraries(mono_realsense_D435i ${PROJECT_NAME})
 endif()
+
+add_executable(mono_web_runner
+        Examples/Monocular/mono_web_runner.cc)
+target_link_libraries(mono_web_runner ${PROJECT_NAME})
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Stereo)
+add_executable(stereo_web_runner
+        Examples/Stereo/stereo_web_runner.cc)
+target_link_libraries(stereo_web_runner ${PROJECT_NAME})
 
 #Monocular inertial examples
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Monocular-Inertial)

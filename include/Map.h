@@ -25,7 +25,9 @@
 #include "SystemSnapshots.h"
 
 #include <set>
+#ifdef HAVE_PANGOLIN
 #include <pangolin/pangolin.h>
+#endif
 #include <mutex>
 #include <map>
 #ifdef ORB_SLAM3_SNAPSHOT_TESTING
@@ -205,7 +207,7 @@ protected:
 
 
     // View of the map in aerial sight (for the AtlasViewer)
-    GLubyte* mThumbnail;
+    unsigned char* mThumbnail;
 
     bool mIsInUse;
     bool mHasTumbnail;

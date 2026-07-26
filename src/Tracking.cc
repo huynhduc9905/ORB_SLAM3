@@ -18,6 +18,7 @@
 
 
 #include "Tracking.h"
+#include "VisualizationSource.h"
 
 #include "ORBmatcher.h"
 #include "FrameDrawer.h"
@@ -2317,6 +2318,66 @@ void Tracking::Track()
             mlbLost.push_back(mState==LOST);
         }
 
+    }
+
+    if (mpSystem && mpSystem->GetVisualizationSource()) {
+        VisualizationFrameSnapshot frame_snap;
+        frame_snap.epoch = mpSystem->GetVisualizationSource()->GetCurrentEpoch();
+        frame_snap.sequence = mCurrentFrame.mnId;
+        frame_snap.capture_timestamp_ns = static_cast<std::int64_t>(mCurrentFrame.mTimeStamp * 1e9);
+        frame_snap.tracking_state = mState;
+        frame_snap.pose_valid = (mState == OK && mCurrentFrame.isSet());
+        if (frame_snap.pose_valid) {
+            frame_snap.T_world_camera = mCurrentFrame.GetPose().inverse();
+        }
+        frame_snap.tracked_keypoints = mnMatchesInliers;
+        frame_snap.tracked_map_points = mnMatchesInliers;
+        mpSystem->GetVisualizationSource()->PublishFrameState(frame_snap);
+
+        if (!mImGray.empty()) {
+            VisualizationImageSnapshot img_snap;
+            img_snap.epoch = frame_snap.epoch;
+            img_snap.frame_sequence = frame_snap.sequence;
+            img_snap.capture_timestamp_ns = frame_snap.capture_timestamp_ns;
+            img_snap.immutable_grayscale_image = mImGray.clone();
+
+            for (int i = 0; i < mCurrentFrame.N; i++) {
+                VisualizationFeature feat;
+                feat.x = mCurrentFrame.mvKeys[i].pt.x;
+                feat.y = mCurrentFrame.mvKeys[i].pt.y;
+                if (mCurrentFrame.mvpMapPoints[i] && !mCurrentFrame.mvbOutlier[i]) {
+                    feat.state = 2; // Map point match (Green)
+                } else if (mCurrentFrame.mvbOutlier[i]) {
+                    feat.state = 3; // Outlier (Red)
+                } else {
+                    feat.state = 1; // Tracked feature (Yellow)
+                }
+                img_snap.features.push_back(feat);
+            }
+            mpSystem->GetVisualizationSource()->PublishImageState(img_snap);
+        }
+
+        Map* pMap = mpAtlas->GetCurrentMap();
+        if (pMap) {
+            const std::vector<MapPoint*>& vpMPs = pMap->GetAllMapPoints();
+            VisualizationMapEvent map_ev;
+            map_ev.epoch = frame_snap.epoch;
+            map_ev.type = VisualizationEventType::POINTS_UPDATED;
+            map_ev.points.reserve(vpMPs.size());
+
+            for (MapPoint* pMP : vpMPs) {
+                if (pMP && !pMP->isBad()) {
+                    VisualizationMapPoint mp;
+                    mp.id = pMP->mnId;
+                    mp.world_position = pMP->GetWorldPos();
+                    mp.reference = false;
+                    map_ev.points.push_back(mp);
+                }
+            }
+            if (!map_ev.points.empty()) {
+                mpSystem->GetVisualizationSource()->PublishMapEvent(map_ev);
+            }
+        }
     }
 
 #ifdef REGISTER_LOOP

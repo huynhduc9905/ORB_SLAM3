@@ -91,3 +91,10 @@ my_settings.txt
 borrar/*
 
 */ExecMean.txt
+
+dataset/
+test_build/
+semantic-review/
+web_viewer/node_modules/
+Examples/Monocular/mono_web_runner
+Examples/Stereo/stereo_web_runner

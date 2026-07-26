@@ -81,6 +81,8 @@ class Tracking;
 class LocalMapping;
 class LoopClosing;
 class Settings;
+class VisualizationSource;
+class WebViewerBackend;
 
 class System
 {
@@ -210,7 +212,11 @@ public:
     void InsertTrackTime(double& time);
 #endif
 
+    std::shared_ptr<VisualizationSource> GetVisualizationSource() const { return mpVisSource; }
+
 private:
+    std::shared_ptr<VisualizationSource> mpVisSource;
+    std::unique_ptr<WebViewerBackend> mpWebBackend;
 
     void Cleanup(bool destroyResources) noexcept;
 
