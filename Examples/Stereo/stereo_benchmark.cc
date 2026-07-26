@@ -122,8 +122,6 @@ int main(int argc, char **argv) {
     auto total_end = std::chrono::steady_clock::now();
     float total_duration_sec = std::chrono::duration_cast<std::chrono::duration<float>>(total_end - total_start).count();
 
-    SLAM.Shutdown();
-
     struct rusage usage;
     getrusage(RUSAGE_SELF, &usage);
     long peak_rss_kb = usage.ru_maxrss;

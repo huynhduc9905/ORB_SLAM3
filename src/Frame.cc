@@ -386,15 +386,12 @@ Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extra
 void Frame::AssignFeaturesToGrid()
 {
     // Fill matrix with points
-    const int nCells = FRAME_GRID_COLS*FRAME_GRID_ROWS;
-
-    int nReserve = 0.5f*N/(nCells);
 
     for(unsigned int i=0; i<FRAME_GRID_COLS;i++)
         for (unsigned int j=0; j<FRAME_GRID_ROWS;j++){
-            mGrid[i][j].reserve(nReserve);
+            mGrid[i][j].clear();
             if(Nleft != -1){
-                mGridRight[i][j].reserve(nReserve);
+                mGridRight[i][j].clear();
             }
         }
 
@@ -905,32 +902,49 @@ void Frame::ComputeStereoMatches()
             const float scaleduR0 = round(uR0*scaleFactor);
 
             // sliding window search
+            const cv::Mat &imgL = mpORBextractorLeft->mvImagePyramid[kpL.octave];
+            const cv::Mat &imgR = mpORBextractorRight->mvImagePyramid[kpL.octave];
+            const int step = (int)imgL.step;
+
+            const int vL_int = (int)scaledvL;
+            const int uL_int = (int)scaleduL;
+            const int uR0_int = (int)scaleduR0;
+
             const int w = 5;
-            cv::Mat IL = mpORBextractorLeft->mvImagePyramid[kpL.octave].rowRange(scaledvL-w,scaledvL+w+1).colRange(scaleduL-w,scaleduL+w+1);
-
-            int bestDistCorr = INT_MAX;
-            int bestincR = 0;
             const int L = 5;
-            vector<float> vDists;
-            vDists.resize(2*L+1);
 
-            const float iniu = scaleduR0+L-w;
-            const float endu = scaleduR0+L+w+1;
-            if(iniu<0 || endu >= mpORBextractorRight->mvImagePyramid[kpL.octave].cols)
+            if(vL_int - w < 0 || vL_int + w >= imgL.rows ||
+               uL_int - w < 0 || uL_int + w >= imgL.cols ||
+               uR0_int - L - w < 0 || uR0_int + L + w >= imgR.cols)
                 continue;
 
-            for(int incR=-L; incR<=+L; incR++)
-            {
-                cv::Mat IR = mpORBextractorRight->mvImagePyramid[kpL.octave].rowRange(scaledvL-w,scaledvL+w+1).colRange(scaleduR0+incR-w,scaleduR0+incR+w+1);
+            const uchar* pL_base = imgL.ptr<uchar>(vL_int - w) + (uL_int - w);
+            const uchar* pR_base = imgR.ptr<uchar>(vL_int - w) + (uR0_int - w);
 
-                float dist = cv::norm(IL,IR,cv::NORM_L1);
-                if(dist<bestDistCorr)
+            float vDists[11];
+            int bestDistCorr = INT_MAX;
+            int bestincR = 0;
+
+            for(int incR = -L; incR <= L; incR++)
+            {
+                int dist = 0;
+                const uchar* pL = pL_base;
+                const uchar* pR = pR_base + incR;
+
+                for(int r = 0; r < 11; r++, pL += step, pR += step)
+                {
+                    for(int c = 0; c < 11; c++)
+                    {
+                        dist += std::abs((int)pL[c] - (int)pR[c]);
+                    }
+                }
+
+                if(dist < bestDistCorr)
                 {
                     bestDistCorr = dist;
                     bestincR = incR;
                 }
-
-                vDists[L+incR] = dist;
+                vDists[L + incR] = (float)dist;
             }
 
             if(bestincR==-L || bestincR==L)
@@ -1046,8 +1060,8 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
          mbHasPose(false), mbHasVelocity(false)
 
 {
-    imgLeft = imLeft.clone();
-    imgRight = imRight.clone();
+    imgLeft = imLeft;
+    imgRight = imRight;
 
     // Frame ID
     mnId=nNextId++;
