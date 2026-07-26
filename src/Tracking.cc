@@ -3440,12 +3440,15 @@ void Tracking::SearchLocalPoints()
         }
     }
 
-    for(size_t i = 0; i < mvpLocalMapPoints.size(); i++)
+    if(mpViewer)
     {
-        MapPoint* pMP = mvpLocalMapPoints[i];
-        if(pMP->mbTrackInView)
+        for(size_t i = 0; i < mvpLocalMapPoints.size(); i++)
         {
-            mCurrentFrame.mmProjectPoints[pMP->mnId] = cv::Point2f(pMP->mTrackProjX, pMP->mTrackProjY);
+            MapPoint* pMP = mvpLocalMapPoints[i];
+            if(pMP->mbTrackInView)
+            {
+                mCurrentFrame.mmProjectPoints[pMP->mnId] = cv::Point2f(pMP->mTrackProjX, pMP->mTrackProjY);
+            }
         }
     }
 

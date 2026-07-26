@@ -863,9 +863,6 @@ int Optimizer::PoseOptimization(Frame *pFrame)
     const float deltaMono = sqrt(5.991);
     const float deltaStereo = sqrt(7.815);
 
-    {
-    unique_lock<mutex> lock(MapPoint::mGlobalMutex);
-
     for(int i=0; i<N; i++)
     {
         MapPoint* pMP = pFrame->mvpMapPoints[i];
@@ -887,7 +884,7 @@ int Optimizer::PoseOptimization(Frame *pFrame)
 
                     e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(0)));
                     e->setMeasurement(obs);
-                    const float invSigma2 = pFrame->mvInvLevelSigma2[kpUn.octave];
+                    const float &invSigma2 = pFrame->mvInvLevelSigma2[kpUn.octave];
                     e->setInformation(Eigen::Matrix2d::Identity()*invSigma2);
 
                     g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
@@ -907,6 +904,7 @@ int Optimizer::PoseOptimization(Frame *pFrame)
                     nInitialCorrespondences++;
                     pFrame->mvbOutlier[i] = false;
 
+                    //SET PARAMETERS IN THE EDGE
                     Eigen::Matrix<double,3,1> obs;
                     const cv::KeyPoint &kpUn = pFrame->mvKeysUn[i];
                     const float &kp_ur = pFrame->mvuRight[i];
@@ -916,7 +914,7 @@ int Optimizer::PoseOptimization(Frame *pFrame)
 
                     e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(0)));
                     e->setMeasurement(obs);
-                    const float invSigma2 = pFrame->mvInvLevelSigma2[kpUn.octave];
+                    const float &invSigma2 = pFrame->mvInvLevelSigma2[kpUn.octave];
                     Eigen::Matrix3d Info = Eigen::Matrix3d::Identity()*invSigma2;
                     e->setInformation(Info);
 
@@ -939,23 +937,20 @@ int Optimizer::PoseOptimization(Frame *pFrame)
             }
             //SLAM with respect a rigid body
             else{
-                nInitialCorrespondences++;
-
-                cv::KeyPoint kpUn;
-
-                if (i < pFrame->Nleft) {    //Left camera observation
-                    kpUn = pFrame->mvKeys[i];
-
+                //Overlapping camera
+                if(i < pFrame->Nleft){
+                    nInitialCorrespondences++;
                     pFrame->mvbOutlier[i] = false;
 
-                    Eigen::Matrix<double, 2, 1> obs;
+                    Eigen::Matrix<double,2,1> obs;
+                    const cv::KeyPoint &kpUn = pFrame->mvKeys[i];
                     obs << kpUn.pt.x, kpUn.pt.y;
 
-                    ORB_SLAM3::EdgeSE3ProjectXYZOnlyPose *e = new ORB_SLAM3::EdgeSE3ProjectXYZOnlyPose();
+                    ORB_SLAM3::EdgeSE3ProjectXYZOnlyPose* e = new ORB_SLAM3::EdgeSE3ProjectXYZOnlyPose();
 
                     e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(0)));
                     e->setMeasurement(obs);
-                    const float invSigma2 = pFrame->mvInvLevelSigma2[kpUn.octave];
+                    const float &invSigma2 = pFrame->mvInvLevelSigma2[kpUn.octave];
                     e->setInformation(Eigen::Matrix2d::Identity() * invSigma2);
 
                     g2o::RobustKernelHuber *rk = new g2o::RobustKernelHuber;
@@ -971,18 +966,18 @@ int Optimizer::PoseOptimization(Frame *pFrame)
                     vnIndexEdgeMono.push_back(i);
                 }
                 else {
-                    kpUn = pFrame->mvKeysRight[i - pFrame->Nleft];
+                    nInitialCorrespondences++;
+                    pFrame->mvbOutlier[i] = false;
 
                     Eigen::Matrix<double, 2, 1> obs;
+                    const cv::KeyPoint &kpUn = pFrame->mvKeysRight[i - pFrame->Nleft];
                     obs << kpUn.pt.x, kpUn.pt.y;
-
-                    pFrame->mvbOutlier[i] = false;
 
                     ORB_SLAM3::EdgeSE3ProjectXYZOnlyPoseToBody *e = new ORB_SLAM3::EdgeSE3ProjectXYZOnlyPoseToBody();
 
                     e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex *>(optimizer.vertex(0)));
                     e->setMeasurement(obs);
-                    const float invSigma2 = pFrame->mvInvLevelSigma2[kpUn.octave];
+                    const float &invSigma2 = pFrame->mvInvLevelSigma2[kpUn.octave];
                     e->setInformation(Eigen::Matrix2d::Identity() * invSigma2);
 
                     g2o::RobustKernelHuber *rk = new g2o::RobustKernelHuber;
@@ -1001,7 +996,6 @@ int Optimizer::PoseOptimization(Frame *pFrame)
                 }
             }
         }
-    }
     }
 
     if(nInitialCorrespondences<3)

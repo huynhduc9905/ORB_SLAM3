@@ -721,10 +721,9 @@ vector<size_t> Frame::GetFeaturesInArea(const float &x, const float  &y, const f
 
 bool Frame::PosInGrid(const cv::KeyPoint &kp, int &posX, int &posY)
 {
-    posX = round((kp.pt.x-mnMinX)*mfGridElementWidthInv);
-    posY = round((kp.pt.y-mnMinY)*mfGridElementHeightInv);
+    posX = static_cast<int>((kp.pt.x - mnMinX) * mfGridElementWidthInv + 0.5f);
+    posY = static_cast<int>((kp.pt.y - mnMinY) * mfGridElementHeightInv + 0.5f);
 
-    //Keypoint's coordinates are undistorted, which could cause to go out of the image
     if(posX<0 || posX>=FRAME_GRID_COLS || posY<0 || posY>=FRAME_GRID_ROWS)
         return false;
 
