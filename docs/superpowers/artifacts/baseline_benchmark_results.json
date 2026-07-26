@@ -1,0 +1,32 @@
+{
+  "circle_run": {
+    "dataset": "dataset/circle_run",
+    "total_frames": 2717,
+    "tracked_frames": 2717,
+    "total_duration_sec": 94.19,
+    "mean_latency_ms": 29.85,
+    "stddev_ms": 6.95,
+    "min_latency_ms": 16.25,
+    "max_latency_ms": 133.83,
+    "p50_latency_ms": 29.24,
+    "p90_latency_ms": 36.32,
+    "p95_latency_ms": 38.58,
+    "avg_fps": 33.5,
+    "peak_rss_mb": 982.6
+  },
+  "full_run": {
+    "dataset": "dataset/full_run",
+    "total_frames": 5620,
+    "tracked_frames": 5620,
+    "total_duration_sec": 232.66,
+    "mean_latency_ms": 36.5,
+    "stddev_ms": 9.7,
+    "min_latency_ms": 17.02,
+    "max_latency_ms": 179.75,
+    "p50_latency_ms": 35.52,
+    "p90_latency_ms": 46.41,
+    "p95_latency_ms": 49.96,
+    "avg_fps": 27.39,
+    "peak_rss_mb": 1706.2
+  }
+}

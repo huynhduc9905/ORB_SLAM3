@@ -167,6 +167,10 @@ add_executable(stereo_euroc
         Examples/Stereo/stereo_euroc.cc)
 target_link_libraries(stereo_euroc ${PROJECT_NAME})
 
+add_executable(stereo_benchmark
+        Examples/Stereo/stereo_benchmark.cc)
+target_link_libraries(stereo_benchmark ${PROJECT_NAME})
+
 add_executable(stereo_tum_vi
         Examples/Stereo/stereo_tum_vi.cc)
 target_link_libraries(stereo_tum_vi ${PROJECT_NAME})
