@@ -803,6 +803,9 @@ namespace ORB_SLAM3
             const int wCell = ceil(width/nCols);
             const int hCell = ceil(height/nRows);
 
+            vector<vector<cv::KeyPoint>> vRowKeys(nRows);
+
+            #pragma omp parallel for schedule(dynamic)
             for(int i=0; i<nRows; i++)
             {
                 const float iniY =minBorderY+i*hCell;
@@ -827,49 +830,27 @@ namespace ORB_SLAM3
                     FAST(mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX),
                          vKeysCell,iniThFAST,true);
 
-                    /*if(bRight && j <= 13){
-                        FAST(mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX),
-                             vKeysCell,10,true);
-                    }
-                    else if(!bRight && j >= 16){
-                        FAST(mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX),
-                             vKeysCell,10,true);
-                    }
-                    else{
-                        FAST(mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX),
-                             vKeysCell,iniThFAST,true);
-                    }*/
-
-
                     if(vKeysCell.empty())
                     {
                         FAST(mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX),
                              vKeysCell,minThFAST,true);
-                        /*if(bRight && j <= 13){
-                            FAST(mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX),
-                                 vKeysCell,5,true);
-                        }
-                        else if(!bRight && j >= 16){
-                            FAST(mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX),
-                                 vKeysCell,5,true);
-                        }
-                        else{
-                            FAST(mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX),
-                                 vKeysCell,minThFAST,true);
-                        }*/
                     }
 
                     if(!vKeysCell.empty())
                     {
-                        for(vector<cv::KeyPoint>::iterator vit=vKeysCell.begin(); vit!=vKeysCell.end();vit++)
+                        for(size_t k = 0; k < vKeysCell.size(); k++)
                         {
-                            (*vit).pt.x+=j*wCell;
-                            (*vit).pt.y+=i*hCell;
-                            vToDistributeKeys.push_back(*vit);
+                            vKeysCell[k].pt.x += j*wCell;
+                            vKeysCell[k].pt.y += i*hCell;
+                            vRowKeys[i].push_back(vKeysCell[k]);
                         }
                     }
-
                 }
+            }
+
+            for(int i=0; i<nRows; i++)
+            {
+                vToDistributeKeys.insert(vToDistributeKeys.end(), vRowKeys[i].begin(), vRowKeys[i].end());
             }
 
             vector<KeyPoint> & keypoints = allKeypoints[level];
@@ -1177,7 +1158,7 @@ namespace ORB_SLAM3
             float scale = mvInvScaleFactor[level];
             Size sz(cvRound((float)image.cols*scale), cvRound((float)image.rows*scale));
             Size wholeSize(sz.width + EDGE_THRESHOLD*2, sz.height + EDGE_THRESHOLD*2);
-            Mat temp(wholeSize, image.type()), masktemp;
+            Mat temp(wholeSize, image.type());
             mvImagePyramid[level] = temp(Rect(EDGE_THRESHOLD, EDGE_THRESHOLD, sz.width, sz.height));
 
             // Compute the resized image
@@ -1194,7 +1175,6 @@ namespace ORB_SLAM3
                                BORDER_REFLECT_101);
             }
         }
-
     }
 
 } //namespace ORB_SLAM
