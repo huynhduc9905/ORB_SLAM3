@@ -10,8 +10,8 @@
 
 | Dataset | Total Frames | Tracked | Elapsed (s) | Mean Latency (ms) | StdDev (ms) | Median P50 (ms) | P90 (ms) | P95 (ms) | **Avg Tracking Frequency** | Peak Memory (MB) |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| `circle_run` | 2717 | 2717 | 94.19 s | 29.85 ms | 6.95 ms | 29.24 ms | 36.32 ms | 38.58 ms | **33.50 Hz (FPS)** | 982.6 MB |
-| `full_run` | 5620 | 5620 | 232.66 s | 36.50 ms | 9.70 ms | 35.52 ms | 46.41 ms | 49.96 ms | **27.39 Hz (FPS)** | 1706.2 MB |
+| `circle_run` | 2717 | 2717 | 68.27 s | 20.26 ms | 5.76 ms | 19.60 ms | 24.57 ms | 26.26 ms | **49.35 Hz (FPS)** | 999.1 MB |
+| `full_run` | 5620 | 5620 | 168.37 s | 25.01 ms | 7.24 ms | 24.55 ms | 31.23 ms | 33.63 ms | **39.99 Hz (FPS)** | 1329.5 MB |
 
 
 ## Sub-component Optimization Targets

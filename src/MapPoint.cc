@@ -310,20 +310,17 @@ bool MapPoint::isBad()
 
 void MapPoint::IncreaseVisible(int n)
 {
-    unique_lock<mutex> lock(mMutexFeatures);
-    mnVisible+=n;
+    mnVisible += n;
 }
 
 void MapPoint::IncreaseFound(int n)
 {
-    unique_lock<mutex> lock(mMutexFeatures);
-    mnFound+=n;
+    mnFound += n;
 }
 
 float MapPoint::GetFoundRatio()
 {
-    unique_lock<mutex> lock(mMutexFeatures);
-    return static_cast<float>(mnFound)/mnVisible;
+    return static_cast<float>(mnFound.load())/mnVisible.load();
 }
 
 void MapPoint::ComputeDistinctiveDescriptors()

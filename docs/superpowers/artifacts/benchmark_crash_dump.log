@@ -1,0 +1,462 @@
+CRASH SIGNAL: 6
+STACK TRACE:
+./Examples/Stereo/stereo_benchmark(+0x6498) [0x55555555a498]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9eecc) [0x7fffef69eecc]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(gsignal+0x1e) [0x7fffef64216e]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(abort+0x26) [0x7fffef629350]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xb2ca6) [0x7fffefab2ca6]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xc533a) [0x7fffefac533a]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(_ZSt10unexpectedv+0) [0x7fffefab2830]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xb2847) [0x7fffefab2847]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_core.so.413(+0x80e9e) [0x7ffff0680e9e]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgproc.so.413(+0x313bf6) [0x7ffff0f13bf6]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgproc.so.413(_ZN2cv3hal6resizeEiPKhmiiPhmiiddi+0xf36) [0x7ffff0f2b8b6]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgproc.so.413(_ZN2cv6resizeERKNS_11_InputArrayERKNS_12_OutputArrayENS_5Size_IiEEddi+0x2d0) [0x7ffff0f2de90]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM317WebViewerProtocol15EncodeImageJpegEmmlRKN2cv3MatEi+0xcc) [0x7ffff7eb5c3c]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM316WebViewerBackend16MirrorWorkerLoopEv+0xf52) [0x7ffff7ec4f82]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+CRASH SIGNAL: 11
+STACK TRACE:
+./Examples/Stereo/stereo_benchmark(+0x6498) [0x55555555a498]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM311LoopClosing25RunGlobalBundleAdjustmentEPNS_3MapEmm+0xa3a) [0x7ffff7c054fa]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+
+--- CRASH LOG (dataset/circle_run) ---
+Return code: 11
+warning: Git tree '/home/duc/orb-playground/ORB_SLAM3' is dirty
+Camera1.k3 optional parameter does not exist...
+Camera2.k3 optional parameter does not exist...
+Camera.newHeight optional parameter does not exist...
+Camera.newWidth optional parameter does not exist...
+Viewer.imageViewScale optional parameter does not exist...
+System.LoadAtlasFromFile optional parameter does not exist...
+System.SaveAtlasToFile optional parameter does not exist...
+System.thFarPoints optional parameter does not exist...
+
+==================================================
+  CRASH DETECTED IN BENCHMARK RUNNER (Signal 11)
+==================================================
+./Examples/Stereo/stereo_benchmark(+0x6498) [0x55555555a498]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM311LoopClosing25RunGlobalBundleAdjustmentEPNS_3MapEmm+0xa3a) [0x7ffff7c054fa]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+
+CRASH SIGNAL: 11
+STACK TRACE:
+./Examples/Stereo/stereo_benchmark(+0x6498) [0x55555555a498]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(pthread_mutex_lock+0x4) [0x7fffef6a0524]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM38KeyFrame15GetCameraCenterEv+0x1f) [0x7ffff7c43d3f]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM38MapPoint20UpdateNormalAndDepthEv+0x339) [0x7ffff7c3d699]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM39Optimizer22OptimizeEssentialGraphEPNS_3MapEPNS_8KeyFrameES4_RKSt3mapIS4_N3g2o4Sim3ESt4lessIS4_EN5Eigen17aligned_allocatorISt4pairIKS4_S7_EEEESI_RKS5_IS4_St3setIS4_S9_SaIS4_EES9_SaISC_ISD_SL_EEERKb+0x1e51) [0x7ffff7c9d8a1]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM311LoopClosing11CorrectLoopEv+0x1864) [0x7ffff7c0b534]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM311LoopClosing3RunEv+0x9fb) [0x7ffff7c0c33b]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+
+--- CRASH LOG (dataset/full_run) ---
+Return code: 11
+warning: Git tree '/home/duc/orb-playground/ORB_SLAM3' is dirty
+Camera1.k3 optional parameter does not exist...
+Camera2.k3 optional parameter does not exist...
+Camera.newHeight optional parameter does not exist...
+Camera.newWidth optional parameter does not exist...
+Viewer.imageViewScale optional parameter does not exist...
+System.LoadAtlasFromFile optional parameter does not exist...
+System.SaveAtlasToFile optional parameter does not exist...
+System.thFarPoints optional parameter does not exist...
+[WebViewer] Failed to start server: bind: Address already in use [system:98 at /nix/store/LZ469BNWDYWS7KX8JA0FAF9Y945Y9KSH-boost-1.89.0-dev/include/boost/asio/detail/reactive_socket_service.hpp:161 in function 'bind']
+
+==================================================
+  CRASH DETECTED IN BENCHMARK RUNNER (Signal 11)
+==================================================
+./Examples/Stereo/stereo_benchmark(+0x6498) [0x55555555a498]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(pthread_mutex_lock+0x4) [0x7fffef6a0524]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM38KeyFrame15GetCameraCenterEv+0x1f) [0x7ffff7c43d3f]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM38MapPoint20UpdateNormalAndDepthEv+0x339) [0x7ffff7c3d699]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM39Optimizer22OptimizeEssentialGraphEPNS_3MapEPNS_8KeyFrameES4_RKSt3mapIS4_N3g2o4Sim3ESt4lessIS4_EN5Eigen17aligned_allocatorISt4pairIKS4_S7_EEEESI_RKS5_IS4_St3setIS4_S9_SaIS4_EES9_SaISC_ISD_SL_EEERKb+0x1e51) [0x7ffff7c9d8a1]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM311LoopClosing11CorrectLoopEv+0x1864) [0x7ffff7c0b534]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM311LoopClosing3RunEv+0x9fb) [0x7ffff7c0c33b]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+
+CRASH SIGNAL: 6
+STACK TRACE:
+./Examples/Stereo/stereo_benchmark(+0x6498) [0x55555555a498]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9eecc) [0x7fffef69eecc]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(gsignal+0x1e) [0x7fffef64216e]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(abort+0x26) [0x7fffef629350]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xb2ca6) [0x7fffefab2ca6]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xc533a) [0x7fffefac533a]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(_ZSt10unexpectedv+0) [0x7fffefab2830]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xb2847) [0x7fffefab2847]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_core.so.413(+0x80e9e) [0x7ffff0680e9e]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgproc.so.413(+0x313bf6) [0x7ffff0f13bf6]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgproc.so.413(_ZN2cv3hal6resizeEiPKhmiiPhmiiddi+0xf36) [0x7ffff0f2b8b6]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgproc.so.413(_ZN2cv6resizeERKNS_11_InputArrayERKNS_12_OutputArrayENS_5Size_IiEEddi+0x2d0) [0x7ffff0f2de90]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM317WebViewerProtocol15EncodeImageJpegEmmlRKN2cv3MatEi+0xcc) [0x7ffff7eb687c]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM316WebViewerBackend16MirrorWorkerLoopEv+0xf52) [0x7ffff7ec5bc2]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+
+--- CRASH LOG (dataset/full_run) ---
+Return code: -9
+warning: Git tree '/home/duc/orb-playground/ORB_SLAM3' is dirty
+Camera1.k3 optional parameter does not exist...
+Camera2.k3 optional parameter does not exist...
+Camera.newHeight optional parameter does not exist...
+Camera.newWidth optional parameter does not exist...
+Viewer.imageViewScale optional parameter does not exist...
+System.LoadAtlasFromFile optional parameter does not exist...
+System.SaveAtlasToFile optional parameter does not exist...
+System.thFarPoints optional parameter does not exist...
+
+CRASH SIGNAL: 11
+STACK TRACE:
+./Examples/Stereo/stereo_benchmark(+0x6498) [0x55555555a498]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgcodecs.so.413(+0x29ce2) [0x7ffff216dce2]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgcodecs.so.413(_ZN2cv20imencodeWithMetadataERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEERKNS_11_InputArrayERKSt6vectorIiSaIiEESA_RSB_IhSaIhEESF_+0x7e) [0x7ffff217738e]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgcodecs.so.413(_ZN2cv8imencodeERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEERKNS_11_InputArrayERSt6vectorIhSaIhEERKSB_IiSaIiEE+0x56) [0x7ffff2179036]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM317WebViewerProtocol15EncodeImageJpegEmmlRKN2cv3MatEi+0x177) [0x7ffff7eb6827]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM316WebViewerBackend16MirrorWorkerLoopEv+0xf52) [0x7ffff7ec5ac2]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+CRASH SIGNAL: 6
+STACK TRACE:
+./Examples/Stereo/stereo_benchmark(+0x6498) [0x55555555a498]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9eecc) [0x7fffef69eecc]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(gsignal+0x1e) [0x7fffef64216e]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(abort+0x26) [0x7fffef629350]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xb2ca6) [0x7fffefab2ca6]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xc533a) [0x7fffefac533a]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(_ZSt10unexpectedv+0) [0x7fffefab2830]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xb2847) [0x7fffefab2847]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_core.so.413(+0x80e9e) [0x7ffff0680e9e]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgproc.so.413(+0x313bf6) [0x7ffff0f13bf6]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgproc.so.413(_ZN2cv3hal6resizeEiPKhmiiPhmiiddi+0xf36) [0x7ffff0f2b8b6]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgproc.so.413(_ZN2cv6resizeERKNS_11_InputArrayERKNS_12_OutputArrayENS_5Size_IiEEddi+0x2d0) [0x7ffff0f2de90]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM317WebViewerProtocol15EncodeImageJpegEmmlRKN2cv3MatEi+0xcc) [0x7ffff7eb65fc]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM316WebViewerBackend16MirrorWorkerLoopEv+0xf52) [0x7ffff7ec5942]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+CRASH SIGNAL: 6
+STACK TRACE:
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9eecc) [0x7fffef69eecc]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(gsignal+0x1e) [0x7fffef64216e]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(abort+0x26) [0x7fffef629350]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xb2ca6) [0x7fffefab2ca6]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xc533a) [0x7fffefac533a]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(_ZSt10unexpectedv+0) [0x7fffefab2830]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xb2847) [0x7fffefab2847]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_core.so.413(+0x80e9e) [0x7ffff0680e9e]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgproc.so.413(+0x313bf6) [0x7ffff0f13bf6]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgproc.so.413(_ZN2cv3hal6resizeEiPKhmiiPhmiiddi+0xf36) [0x7ffff0f2b8b6]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgproc.so.413(_ZN2cv6resizeERKNS_11_InputArrayERKNS_12_OutputArrayENS_5Size_IiEEddi+0x2d0) [0x7ffff0f2de90]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM317WebViewerProtocol15EncodeImageJpegEmmlRKN2cv3MatEi+0xcc) [0x7ffff7ebfdbc]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM316WebViewerBackend16MirrorWorkerLoopEv+0xf52) [0x7ffff7ecf102]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+CRASH SIGNAL: 11
+STACK TRACE:
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(pthread_mutex_lock+0x4) [0x7fffef6a0524]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM38KeyFrame15GetCameraCenterEv+0x1f) [0x7ffff7c4d37f]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM38MapPoint20UpdateNormalAndDepthEv+0x339) [0x7ffff7c46cd9]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM39Optimizer22OptimizeEssentialGraphEPNS_3MapEPNS_8KeyFrameES4_RKSt3mapIS4_N3g2o4Sim3ESt4lessIS4_EN5Eigen17aligned_allocatorISt4pairIKS4_S7_EEEESI_RKS5_IS4_St3setIS4_S9_SaIS4_EES9_SaISC_ISD_SL_EEERKb+0x1e51) [0x7ffff7ca6ee1]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM311LoopClosing11CorrectLoopEv+0x1905) [0x7ffff7c14365]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM311LoopClosing3RunEv+0xa9b) [0x7ffff7c1528b]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+CRASH SIGNAL: 6
+STACK TRACE:
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9eecc) [0x7fffef69eecc]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(gsignal+0x1e) [0x7fffef64216e]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(abort+0x26) [0x7fffef629350]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xc756a) [0x7fffefac756a]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xc533a) [0x7fffefac533a]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(_ZSt10unexpectedv+0) [0x7fffefab2830]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xb2847) [0x7fffefab2847]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_core.so.413(+0x80e9e) [0x7ffff0680e9e]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgproc.so.413(+0x313bf6) [0x7ffff0f13bf6]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgproc.so.413(_ZN2cv3hal6resizeEiPKhmiiPhmiiddi+0xf36) [0x7ffff0f2b8b6]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgproc.so.413(_ZN2cv6resizeERKNS_11_InputArrayERKNS_12_OutputArrayENS_5Size_IiEEddi+0x2d0) [0x7ffff0f2de90]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM312ORBextractor14ComputePyramidEN2cv3MatE+0x24c) [0x7ffff7c1bc7c]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM312ORBextractorclERKN2cv11_InputArrayES4_RSt6vectorINS1_8KeyPointESaIS6_EERKNS1_12_OutputArrayERS5_IiSaIiEE+0xa2) [0x7ffff7c23102]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM35Frame10ExtractORBEiRKN2cv3MatEii+0x1ff) [0x7ffff7d8a0df]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+CRASH SIGNAL: 6
+STACK TRACE:
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9eecc) [0x7fffef69eecc]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(gsignal+0x1e) [0x7fffef64216e]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(abort+0x26) [0x7fffef629350]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xb2ca6) [0x7fffefab2ca6]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xc533a) [0x7fffefac533a]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(_ZSt10unexpectedv+0) [0x7fffefab2830]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xb2847) [0x7fffefab2847]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_core.so.413(+0x80e9e) [0x7ffff0680e9e]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgproc.so.413(+0x313bf6) [0x7ffff0f13bf6]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgproc.so.413(_ZN2cv3hal6resizeEiPKhmiiPhmiiddi+0xf36) [0x7ffff0f2b8b6]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgproc.so.413(_ZN2cv6resizeERKNS_11_InputArrayERKNS_12_OutputArrayENS_5Size_IiEEddi+0x2d0) [0x7ffff0f2de90]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM312ORBextractor14ComputePyramidEN2cv3MatE+0x24c) [0x7ffff7c1bc7c]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM312ORBextractorclERKN2cv11_InputArrayES4_RSt6vectorINS1_8KeyPointESaIS6_EERKNS1_12_OutputArrayERS5_IiSaIiEE+0xa2) [0x7ffff7c23102]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM35Frame10ExtractORBEiRKN2cv3MatEii+0xff) [0x7ffff7d89fdf]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+
+--- CRASH LOG (dataset/full_run) ---
+Return code: 11
+warning: Git tree '/home/duc/orb-playground/ORB_SLAM3' is dirty
+Camera1.k3 optional parameter does not exist...
+Camera2.k3 optional parameter does not exist...
+Camera.newHeight optional parameter does not exist...
+Camera.newWidth optional parameter does not exist...
+Viewer.imageViewScale optional parameter does not exist...
+System.LoadAtlasFromFile optional parameter does not exist...
+System.SaveAtlasToFile optional parameter does not exist...
+System.thFarPoints optional parameter does not exist...
+
+==================================================
+  CRASH DETECTED IN BENCHMARK RUNNER (Signal 11)
+==================================================
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(pthread_mutex_lock+0x4) [0x7fffef6a0524]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM38KeyFrame15GetCameraCenterEv+0x1f) [0x7ffff7c4d37f]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM38MapPoint20UpdateNormalAndDepthEv+0x339) [0x7ffff7c46cd9]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM39Optimizer22OptimizeEssentialGraphEPNS_3MapEPNS_8KeyFrameES4_RKSt3mapIS4_N3g2o4Sim3ESt4lessIS4_EN5Eigen17aligned_allocatorISt4pairIKS4_S7_EEEESI_RKS5_IS4_St3setIS4_S9_SaIS4_EES9_SaISC_ISD_SL_EEERKb+0x1e51) [0x7ffff7ca6ee1]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM311LoopClosing11CorrectLoopEv+0x1905) [0x7ffff7c14365]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM311LoopClosing3RunEv+0xa9b) [0x7ffff7c1528b]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+terminate called after throwing an instance of 'cv::Exception'
+  what():  OpenCV(4.13.0) /build/source/modules/core/src/system.cpp:2091: error: (-215:Assertion failed) key_ != -1 && "Can't fetch data from terminated TLS container." in function 'getData'
+
+terminate called recursively
+
+==================================================
+  CRASH DETECTED IN BENCHMARK RUNNER (Signal 6)
+==================================================
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9eecc) [0x7fffef69eecc]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(gsignal+0x1e) [0x7fffef64216e]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(abort+0x26) [0x7fffef629350]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xc756a) [0x7fffefac756a]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xc533a) [0x7fffefac533a]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(_ZSt10unexpectedv+0) [0x7fffefab2830]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xb2847) [0x7fffefab2847]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_core.so.413(+0x80e9e) [0x7ffff0680e9e]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgproc.so.413(+0x313bf6) [0x7ffff0f13bf6]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgproc.so.413(_ZN2cv3hal6resizeEiPKhmiiPhmiiddi+0xf36) [0x7ffff0f2b8b6]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgproc.so.413(_ZN2cv6resizeERKNS_11_InputArrayERKNS_12_OutputArrayENS_5Size_IiEEddi+0x2d0) [0x7ffff0f2de90]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM312ORBextractor14ComputePyramidEN2cv3MatE+0x24c) [0x7ffff7c1bc7c]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM312ORBextractorclERKN2cv11_InputArrayES4_RSt6vectorINS1_8KeyPointESaIS6_EERKNS1_12_OutputArrayERS5_IiSaIiEE+0xa2) [0x7ffff7c23102]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM35Frame10ExtractORBEiRKN2cv3MatEii+0x1ff) [0x7ffff7d8a0df]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+
+==================================================
+  CRASH DETECTED IN BENCHMARK RUNNER (Signal 6)
+==================================================
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9eecc) [0x7fffef69eecc]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(gsignal+0x1e) [0x7fffef64216e]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(abort+0x26) [0x7fffef629350]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xb2ca6) [0x7fffefab2ca6]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xc533a) [0x7fffefac533a]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(_ZSt10unexpectedv+0) [0x7fffefab2830]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xb2847) [0x7fffefab2847]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_core.so.413(+0x80e9e) [0x7ffff0680e9e]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgproc.so.413(+0x313bf6) [0x7ffff0f13bf6]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgproc.so.413(_ZN2cv3hal6resizeEiPKhmiiPhmiiddi+0xf36) [0x7ffff0f2b8b6]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgproc.so.413(_ZN2cv6resizeERKNS_11_InputArrayERKNS_12_OutputArrayENS_5Size_IiEEddi+0x2d0) [0x7ffff0f2de90]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM312ORBextractor14ComputePyramidEN2cv3MatE+0x24c) [0x7ffff7c1bc7c]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM312ORBextractorclERKN2cv11_InputArrayES4_RSt6vectorINS1_8KeyPointESaIS6_EERKNS1_12_OutputArrayERS5_IiSaIiEE+0xa2) [0x7ffff7c23102]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM35Frame10ExtractORBEiRKN2cv3MatEii+0xff) [0x7ffff7d89fdf]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+
+CRASH SIGNAL: 6
+STACK TRACE:
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9eecc) [0x7fffef69eecc]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(gsignal+0x1e) [0x7fffef64216e]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(abort+0x26) [0x7fffef629350]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xb2ca6) [0x7fffefab2ca6]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xc533a) [0x7fffefac533a]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(_ZSt10unexpectedv+0) [0x7fffefab2830]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xb2847) [0x7fffefab2847]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_core.so.413(+0x80e9e) [0x7ffff0680e9e]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgproc.so.413(+0x313bf6) [0x7ffff0f13bf6]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgproc.so.413(_ZN2cv3hal6resizeEiPKhmiiPhmiiddi+0xf36) [0x7ffff0f2b8b6]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgproc.so.413(_ZN2cv6resizeERKNS_11_InputArrayERKNS_12_OutputArrayENS_5Size_IiEEddi+0x2d0) [0x7ffff0f2de90]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM317WebViewerProtocol15EncodeImageJpegEmmlRKN2cv3MatEi+0xcc) [0x7ffff7ec0e7c]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM316WebViewerBackend16MirrorWorkerLoopEv+0xf52) [0x7ffff7ed01c2]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+CRASH SIGNAL: 11
+STACK TRACE:
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(pthread_mutex_lock+0x4) [0x7fffef6a0524]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM38KeyFrame15GetCameraCenterEv+0x1f) [0x7ffff7c4e8bf]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM38MapPoint20UpdateNormalAndDepthEv+0x339) [0x7ffff7c48219]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM312LocalMapping18ProcessNewKeyFrameEv+0x10a) [0x7ffff7bf7d5a]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM312LocalMapping3RunEv+0xbd) [0x7ffff7bffa1d]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+
+--- CRASH LOG (dataset/circle_run) ---
+Return code: 11
+warning: Git tree '/home/duc/orb-playground/ORB_SLAM3' is dirty
+Camera1.k3 optional parameter does not exist...
+Camera2.k3 optional parameter does not exist...
+Camera.newHeight optional parameter does not exist...
+Camera.newWidth optional parameter does not exist...
+Viewer.imageViewScale optional parameter does not exist...
+System.LoadAtlasFromFile optional parameter does not exist...
+System.SaveAtlasToFile optional parameter does not exist...
+System.thFarPoints optional parameter does not exist...
+
+==================================================
+  CRASH DETECTED IN BENCHMARK RUNNER (Signal 11)
+==================================================
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(pthread_mutex_lock+0x4) [0x7fffef6a0524]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM38KeyFrame15GetCameraCenterEv+0x1f) [0x7ffff7c4e8bf]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM38MapPoint20UpdateNormalAndDepthEv+0x339) [0x7ffff7c48219]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM312LocalMapping18ProcessNewKeyFrameEv+0x10a) [0x7ffff7bf7d5a]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM312LocalMapping3RunEv+0xbd) [0x7ffff7bffa1d]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+
+CRASH SIGNAL: 11
+STACK TRACE:
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgcodecs.so.413(+0x29ce2) [0x7ffff216dce2]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgcodecs.so.413(_ZN2cv20imencodeWithMetadataERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEERKNS_11_InputArrayERKSt6vectorIiSaIiEESA_RSB_IhSaIhEESF_+0x7e) [0x7ffff217738e]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgcodecs.so.413(_ZN2cv8imencodeERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEERKNS_11_InputArrayERSt6vectorIhSaIhEERKSB_IiSaIiEE+0x56) [0x7ffff2179036]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM317WebViewerProtocol15EncodeImageJpegEmmlRKN2cv3MatEi+0x177) [0x7ffff7ec0f27]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM316WebViewerBackend16MirrorWorkerLoopEv+0xf52) [0x7ffff7ed01c2]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+CRASH SIGNAL: 11
+STACK TRACE:
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(pthread_mutex_lock+0x4) [0x7fffef6a0524]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM38KeyFrame15GetCameraCenterEv+0x1f) [0x7ffff7c4eabf]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM38MapPoint20UpdateNormalAndDepthEv+0x339) [0x7ffff7c483d9]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM312LocalMapping17SearchInNeighborsEv+0xf1f) [0x7ffff7bfaeef]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM312LocalMapping3RunEv+0x718) [0x7ffff7c00518]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+
+--- CRASH LOG (dataset/full_run) ---
+Return code: 11
+warning: Git tree '/home/duc/orb-playground/ORB_SLAM3' is dirty
+Camera1.k3 optional parameter does not exist...
+Camera2.k3 optional parameter does not exist...
+Camera.newHeight optional parameter does not exist...
+Camera.newWidth optional parameter does not exist...
+Viewer.imageViewScale optional parameter does not exist...
+System.LoadAtlasFromFile optional parameter does not exist...
+System.SaveAtlasToFile optional parameter does not exist...
+System.thFarPoints optional parameter does not exist...
+
+==================================================
+  CRASH DETECTED IN BENCHMARK RUNNER (Signal 11)
+==================================================
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(pthread_mutex_lock+0x4) [0x7fffef6a0524]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM38KeyFrame15GetCameraCenterEv+0x1f) [0x7ffff7c4eabf]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM38MapPoint20UpdateNormalAndDepthEv+0x339) [0x7ffff7c483d9]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM312LocalMapping17SearchInNeighborsEv+0xf1f) [0x7ffff7bfaeef]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM312LocalMapping3RunEv+0x718) [0x7ffff7c00518]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+
+CRASH SIGNAL: 11
+STACK TRACE:
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(pthread_mutex_lock+0x4) [0x7fffef6a0524]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM38KeyFrame15GetCameraCenterEv+0x1f) [0x7ffff7c4ebbf]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM38MapPoint20UpdateNormalAndDepthEv+0x339) [0x7ffff7c484d9]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM39Optimizer22OptimizeEssentialGraphEPNS_3MapEPNS_8KeyFrameES4_RKSt3mapIS4_N3g2o4Sim3ESt4lessIS4_EN5Eigen17aligned_allocatorISt4pairIKS4_S7_EEEESI_RKS5_IS4_St3setIS4_S9_SaIS4_EES9_SaISC_ISD_SL_EEERKb+0x1e51) [0x7ffff7ca8721]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM311LoopClosing11CorrectLoopEv+0x1905) [0x7ffff7c147a5]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM311LoopClosing3RunEv+0xa9b) [0x7ffff7c156cb]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+
+--- CRASH LOG (dataset/full_run) ---
+Return code: 11
+warning: Git tree '/home/duc/orb-playground/ORB_SLAM3' is dirty
+Camera1.k3 optional parameter does not exist...
+Camera2.k3 optional parameter does not exist...
+Camera.newHeight optional parameter does not exist...
+Camera.newWidth optional parameter does not exist...
+Viewer.imageViewScale optional parameter does not exist...
+System.LoadAtlasFromFile optional parameter does not exist...
+System.SaveAtlasToFile optional parameter does not exist...
+System.thFarPoints optional parameter does not exist...
+
+==================================================
+  CRASH DETECTED IN BENCHMARK RUNNER (Signal 11)
+==================================================
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(pthread_mutex_lock+0x4) [0x7fffef6a0524]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM38KeyFrame15GetCameraCenterEv+0x1f) [0x7ffff7c4ebbf]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM38MapPoint20UpdateNormalAndDepthEv+0x339) [0x7ffff7c484d9]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM39Optimizer22OptimizeEssentialGraphEPNS_3MapEPNS_8KeyFrameES4_RKSt3mapIS4_N3g2o4Sim3ESt4lessIS4_EN5Eigen17aligned_allocatorISt4pairIKS4_S7_EEEESI_RKS5_IS4_St3setIS4_S9_SaIS4_EES9_SaISC_ISD_SL_EEERKb+0x1e51) [0x7ffff7ca8721]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM311LoopClosing11CorrectLoopEv+0x1905) [0x7ffff7c147a5]
+/home/duc/orb-playground/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM311LoopClosing3RunEv+0xa9b) [0x7ffff7c156cb]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+

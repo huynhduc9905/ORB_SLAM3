@@ -12,15 +12,16 @@
 | **3. Zero-Alloc Raw Pointer Patch Correlation** | 40.60 Hz | 24.63 ms | 34.31 Hz | 29.14 ms | 191.28 s | 100% (5,620 / 5,620) |
 | **4. Zero-Clone Frame & Grid Allocation** | 40.74 Hz | 24.54 ms | 33.91 Hz | 29.49 ms | 193.38 s | 100% (5,620 / 5,620) |
 | **5. High-Precision Stage Profiling (`REGISTER_TIMES`)** | 41.80 Hz | 23.92 ms | 35.01 Hz | 28.56 ms | 189.30 s | 100% (5,620 / 5,620) |
-| **6. OpenMP Parallel Grid FAST & Local Map Matching** | **46.60 Hz** | **21.46 ms** | **37.68 Hz** | **26.54 ms** | **177.10 s** | **100% (5,620 / 5,620)** |
+| **6. OpenMP Parallel Grid FAST & Local Map Matching** | 46.60 Hz | 21.46 ms | 37.68 Hz | 26.54 ms | 177.10 s | 100% (5,620 / 5,620) |
+| **7. Lock-Free MapPoints, Zero-Alloc & Parallel Stereo Extraction** | **49.35 Hz** | **20.26 ms** | **39.99 Hz** | **25.01 ms** | **168.37 s** | **100% (5,620 / 5,620)** |
 
 ## Empirical Stage Timing Breakdown (`full_run` with 2,000 features fixed)
 
 | Sub-System / Function Stage | Execution Time (ms) | % Total Frame Time | Optimizations Applied |
 | :--- | :---: | :---: | :--- |
-| **1. ORB Feature Extraction** (`Frame::ExtractORB`) | **7.24 ms** (down from 9.12 ms) | **26.9 %** | Parallel grid cell FAST corner detection across CPU cores via OpenMP. |
-| **2. Local Map Projection & BA** (`TrackLocalMap`) | **6.79 ms** (down from 7.23 ms) | **25.2 %** | Parallel map point projection matching across 16 OpenMP threads. |
-| **3. Motion Model Prediction** (`TrackWithMotionModel`) | **3.47 ms** | **12.9 %** | Camera velocity prediction and frame-to-frame feature projection matching. |
-| **4. Epipolar Stereo Matching** (`ComputeStereoMatches`) | **1.11 ms** | **4.1 %** | Sub-pixel stereo keypoint matching (raw-pointer patch correlation & hardware `POPCNT`). |
-| **5. System / Image Frame Overhead** | **7.92 ms** | **29.4 %** | Image decoding, matrix initialization, grid mapping. |
-| **Total Frame Latency** | **26.54 ms** | **100.0 %** | **37.68 Hz (FPS) throughput** (`circle_run` reached **46.60 Hz** / 21.46 ms) |
+| **1. ORB Feature Extraction** (`Frame::ExtractORB`) | **6.35 ms** (down from 9.12 ms) | **25.4 %** | Parallel grid cell FAST corner detection & concurrent stereo image extraction via `std::thread`. |
+| **2. Local Map Projection & BA** (`TrackLocalMap`) | **6.04 ms** (down from 7.23 ms) | **24.2 %** | Lock-free atomic visibility counters (`std::atomic<int>`), zero-alloc observations, OpenMP projection matching. |
+| **3. Motion Model Prediction** (`TrackWithMotionModel`) | **3.35 ms** | **13.4 %** | Camera velocity prediction and frame-to-frame feature projection matching. |
+| **4. Epipolar Stereo Matching** (`ComputeStereoMatches`) | **1.06 ms** | **4.2 %** | Sub-pixel stereo keypoint matching (raw-pointer patch correlation & hardware `POPCNT`). |
+| **5. System / Image Frame Overhead** | **8.21 ms** | **32.8 %** | Image decoding, matrix initialization, grid mapping. |
+| **Total Frame Latency** | **25.01 ms** | **100.0 %** | **39.99 Hz (FPS) throughput** (`circle_run` reached **49.35 Hz** mean / **51.02 Hz** $P_{50}$) |

@@ -3425,21 +3425,24 @@ void Tracking::SearchLocalPoints()
 
     int nToMatch=0;
 
-    // Project points in frame and check its visibility
-    for(vector<MapPoint*>::iterator vit=mvpLocalMapPoints.begin(), vend=mvpLocalMapPoints.end(); vit!=vend; vit++)
+    #pragma omp parallel for reduction(+:nToMatch) schedule(dynamic, 32)
+    for(size_t i = 0; i < mvpLocalMapPoints.size(); i++)
     {
-        MapPoint* pMP = *vit;
+        MapPoint* pMP = mvpLocalMapPoints[i];
 
-        if(pMP->mnLastFrameSeen == mCurrentFrame.mnId)
+        if(pMP->mnLastFrameSeen == mCurrentFrame.mnId || pMP->isBad())
             continue;
-        if(pMP->isBad())
-            continue;
-        // Project (this fills MapPoint variables for matching)
+
         if(mCurrentFrame.isInFrustum(pMP,0.5))
         {
             pMP->IncreaseVisible();
             nToMatch++;
         }
+    }
+
+    for(size_t i = 0; i < mvpLocalMapPoints.size(); i++)
+    {
+        MapPoint* pMP = mvpLocalMapPoints[i];
         if(pMP->mbTrackInView)
         {
             mCurrentFrame.mmProjectPoints[pMP->mnId] = cv::Point2f(pMP->mTrackProjX, pMP->mTrackProjY);
@@ -3528,9 +3531,9 @@ void Tracking::UpdateLocalKeyFrames()
             {
                 if(!pMP->isBad())
                 {
-                    const map<KeyFrame*,tuple<int,int>> observations = pMP->GetObservations();
-                    for(map<KeyFrame*,tuple<int,int>>::const_iterator it=observations.begin(), itend=observations.end(); it!=itend; it++)
-                        keyframeCounter[it->first]++;
+                    pMP->ForEachObservation([&keyframeCounter](KeyFrame* pKF){
+                        keyframeCounter[pKF]++;
+                    });
                 }
                 else
                 {
@@ -3551,9 +3554,9 @@ void Tracking::UpdateLocalKeyFrames()
                     continue;
                 if(!pMP->isBad())
                 {
-                    const map<KeyFrame*,tuple<int,int>> observations = pMP->GetObservations();
-                    for(map<KeyFrame*,tuple<int,int>>::const_iterator it=observations.begin(), itend=observations.end(); it!=itend; it++)
-                        keyframeCounter[it->first]++;
+                    pMP->ForEachObservation([&keyframeCounter](KeyFrame* pKF){
+                        keyframeCounter[pKF]++;
+                    });
                 }
                 else
                 {

@@ -120,10 +120,9 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
 #ifdef REGISTER_TIMES
     std::chrono::steady_clock::time_point time_StartExtORB = std::chrono::steady_clock::now();
 #endif
-    thread threadLeft(&Frame::ExtractORB,this,0,imLeft,0,0);
-    thread threadRight(&Frame::ExtractORB,this,1,imRight,0,0);
+    std::thread threadLeft(&Frame::ExtractORB, this, 0, std::cref(imLeft), 0, 0);
+    ExtractORB(1, imRight, 0, 0);
     threadLeft.join();
-    threadRight.join();
 #ifdef REGISTER_TIMES
     std::chrono::steady_clock::time_point time_EndExtORB = std::chrono::steady_clock::now();
 
@@ -690,7 +689,7 @@ vector<size_t> Frame::GetFeaturesInArea(const float &x, const float  &y, const f
     {
         for(int iy = nMinCellY; iy<=nMaxCellY; iy++)
         {
-            const vector<size_t> vCell = (!bRight) ? mGrid[ix][iy] : mGridRight[ix][iy];
+            const vector<size_t> &vCell = (!bRight) ? mGrid[ix][iy] : mGridRight[ix][iy];
             if(vCell.empty())
                 continue;
 
@@ -1079,10 +1078,9 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
 #ifdef REGISTER_TIMES
     std::chrono::steady_clock::time_point time_StartExtORB = std::chrono::steady_clock::now();
 #endif
-    thread threadLeft(&Frame::ExtractORB,this,0,imLeft,static_cast<KannalaBrandt8*>(mpCamera)->mvLappingArea[0],static_cast<KannalaBrandt8*>(mpCamera)->mvLappingArea[1]);
-    thread threadRight(&Frame::ExtractORB,this,1,imRight,static_cast<KannalaBrandt8*>(mpCamera2)->mvLappingArea[0],static_cast<KannalaBrandt8*>(mpCamera2)->mvLappingArea[1]);
+    std::thread threadLeft(&Frame::ExtractORB, this, 0, std::cref(imLeft), static_cast<KannalaBrandt8*>(mpCamera)->mvLappingArea[0], static_cast<KannalaBrandt8*>(mpCamera)->mvLappingArea[1]);
+    ExtractORB(1, imRight, static_cast<KannalaBrandt8*>(mpCamera2)->mvLappingArea[0], static_cast<KannalaBrandt8*>(mpCamera2)->mvLappingArea[1]);
     threadLeft.join();
-    threadRight.join();
 #ifdef REGISTER_TIMES
     std::chrono::steady_clock::time_point time_EndExtORB = std::chrono::steady_clock::now();
 

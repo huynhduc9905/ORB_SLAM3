@@ -28,6 +28,7 @@
 #include "SerializationUtils.h"
 
 #include <opencv2/core/core.hpp>
+#include <atomic>
 #include <mutex>
 
 #include <boost/serialization/serialization.hpp>
@@ -143,6 +144,16 @@ public:
 
     void ComputeDistinctiveDescriptors();
 
+    template<typename F>
+    void ForEachObservation(F&& f)
+    {
+        std::unique_lock<std::mutex> lock(mMutexFeatures);
+        for(const auto& mit : mObservations)
+        {
+            f(mit.first);
+        }
+    }
+
     cv::Mat GetDescriptor();
 
     void UpdateNormalAndDepth();
@@ -212,7 +223,6 @@ protected:
      // Position in absolute coordinates
      Eigen::Vector3f mWorldPos;
 
-     // Keyframes observing the point and associated index in keyframe
      std::map<KeyFrame*,std::tuple<int,int> > mObservations;
      // For save relation without pointer, this is necessary for save/load function
      std::map<long unsigned int, int> mBackupObservationsId1;
@@ -229,8 +239,8 @@ protected:
      long unsigned int mBackupRefKFId;
 
      // Tracking counters
-     int mnVisible;
-     int mnFound;
+     std::atomic<int> mnVisible;
+     std::atomic<int> mnFound;
 
      // Bad flag (we do not currently erase MapPoint from memory)
      bool mbBad;

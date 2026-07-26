@@ -471,10 +471,10 @@ namespace ORB_SLAM3
 
     static void computeOrientation(const Mat& image, vector<KeyPoint>& keypoints, const vector<int>& umax)
     {
-        for (vector<KeyPoint>::iterator keypoint = keypoints.begin(),
-                     keypointEnd = keypoints.end(); keypoint != keypointEnd; ++keypoint)
+        #pragma omp parallel for schedule(dynamic, 32)
+        for (size_t i = 0; i < keypoints.size(); ++i)
         {
-            keypoint->angle = IC_Angle(image, keypoint->pt, umax);
+            keypoints[i].angle = IC_Angle(image, keypoints[i].pt, umax);
         }
     }
 
@@ -1052,7 +1052,6 @@ namespace ORB_SLAM3
         }
 
         // and compute orientations
-        #pragma omp parallel for schedule(dynamic)
         for (int level = 0; level < nlevels; ++level)
             computeOrientation(mvImagePyramid[level], allKeypoints[level], umax);
     }
@@ -1103,7 +1102,12 @@ namespace ORB_SLAM3
 
         int offset = 0;
         //Modified for speeding up stereo fisheye matching
-        int monoIndex = 0, stereoIndex = nkeypoints-1;
+        struct LevelData {
+            vector<KeyPoint> kps;
+            Mat desc;
+        };
+        vector<LevelData> vLevelData(nlevels);
+
         for (int level = 0; level < nlevels; ++level)
         {
             vector<KeyPoint>& keypoints = allKeypoints[level];
@@ -1117,34 +1121,39 @@ namespace ORB_SLAM3
             GaussianBlur(workingMat, workingMat, Size(7, 7), 2, 2, BORDER_REFLECT_101);
 
             // Compute the descriptors
-            //Mat desc = descriptors.rowRange(offset, offset + nkeypointsLevel);
             Mat desc = cv::Mat(nkeypointsLevel, 32, CV_8U);
             computeDescriptors(workingMat, keypoints, desc, pattern);
 
-            offset += nkeypointsLevel;
-
-
-            float scale = mvScaleFactor[level]; //getScale(level, firstLevel, scaleFactor);
-            int i = 0;
-            for (vector<KeyPoint>::iterator keypoint = keypoints.begin(),
-                         keypointEnd = keypoints.end(); keypoint != keypointEnd; ++keypoint){
-
-                // Scale keypoint coordinates
-                if (level != 0){
-                    keypoint->pt *= scale;
+            float scale = mvScaleFactor[level];
+            if (level != 0){
+                for(size_t k = 0; k < keypoints.size(); k++){
+                    keypoints[k].pt *= scale;
                 }
+            }
 
-                if(keypoint->pt.x >= vLappingArea[0] && keypoint->pt.x <= vLappingArea[1]){
-                    _keypoints.at(stereoIndex) = (*keypoint);
+            vLevelData[level] = {keypoints, desc};
+        }
+
+        int monoIndex = 0, stereoIndex = nkeypoints-1;
+        for (int level = 0; level < nlevels; ++level)
+        {
+            const vector<KeyPoint>& keypoints = vLevelData[level].kps;
+            const Mat& desc = vLevelData[level].desc;
+            int nkeypointsLevel = (int)keypoints.size();
+
+            for (int i = 0; i < nkeypointsLevel; ++i)
+            {
+                const KeyPoint& keypoint = keypoints[i];
+                if(keypoint.pt.x >= vLappingArea[0] && keypoint.pt.x <= vLappingArea[1]){
+                    _keypoints.at(stereoIndex) = keypoint;
                     desc.row(i).copyTo(descriptors.row(stereoIndex));
                     stereoIndex--;
                 }
                 else{
-                    _keypoints.at(monoIndex) = (*keypoint);
+                    _keypoints.at(monoIndex) = keypoint;
                     desc.row(i).copyTo(descriptors.row(monoIndex));
                     monoIndex++;
                 }
-                i++;
             }
         }
         //cout << "[ORBextractor]: extracted " << _keypoints.size() << " KeyPoints" << endl;
