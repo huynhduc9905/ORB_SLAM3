@@ -11,20 +11,16 @@
 | **2. Hardware `POPCNT` Vectorization** | 39.83 Hz | 25.10 ms | 32.91 Hz | 30.38 ms | 198.62 s | 100% (5,620 / 5,620) |
 | **3. Zero-Alloc Raw Pointer Patch Correlation** | 40.60 Hz | 24.63 ms | 34.31 Hz | 29.14 ms | 191.28 s | 100% (5,620 / 5,620) |
 | **4. Zero-Clone Frame & Grid Allocation** | 40.74 Hz | 24.54 ms | 33.91 Hz | 29.49 ms | 193.38 s | 100% (5,620 / 5,620) |
-| **5. High-Precision Stage Profiling (`REGISTER_TIMES`)** | **41.80 Hz** | **23.92 ms** | **35.01 Hz** | **28.56 ms** | **189.30 s** | **100% (5,620 / 5,620)** |
+| **5. High-Precision Stage Profiling (`REGISTER_TIMES`)** | 41.80 Hz | 23.92 ms | 35.01 Hz | 28.56 ms | 189.30 s | 100% (5,620 / 5,620) |
+| **6. OpenMP Parallel Grid FAST & Local Map Matching** | **46.60 Hz** | **21.46 ms** | **37.68 Hz** | **26.54 ms** | **177.10 s** | **100% (5,620 / 5,620)** |
 
-## Empirical Per-Function Stage Timing Breakdown (`full_run`)
+## Empirical Stage Timing Breakdown (`full_run` with 2,000 features fixed)
 
-| Sub-System / Function Stage | Execution Time (ms) | % Total Frame Time | Function Responsibilities & Notes |
+| Sub-System / Function Stage | Execution Time (ms) | % Total Frame Time | Optimizations Applied |
 | :--- | :---: | :---: | :--- |
-| **1. ORB Feature Extraction** (`Frame::ExtractORB`) | **9.12 ms** | **31.9 %** | Multi-octave image pyramid construction, FAST corner detection grid, descriptor generation across left & right stereo images. |
-| **2. Local Map Projection & BA** (`TrackLocalMap`) | **7.23 ms** | **25.3 %** | Local map point search (`SearchByProjection`), G2O non-linear pose optimization (`Optimizer::PoseOptimization`). |
-| **3. Motion Model Prediction** (`TrackWithMotionModel`) | **3.35 ms** | **11.7 %** | Predict camera velocity, map point matching against prior frame. |
-| **4. Epipolar Stereo Matching** (`ComputeStereoMatches`) | **1.06 ms** | **3.7 %** | Sub-pixel stereo keypoint matching (drastically reduced from >10 ms via raw-pointer patch correlation). |
-| **5. System / Image Frame Overhead** | **7.80 ms** | **27.4 %** | Image decoding, matrix initialization, grid mapping. |
-| **Total Frame Latency** | **28.56 ms** | **100.0 %** | **35.01 Hz (FPS) throughput** |
-
-## Key Insights & Next Optimization Targets
-1. **Primary Bottleneck**: ORB Feature Extraction consumes **9.12 ms** (31.9%) per frame. Optimizing FAST corner threshold checks or feature count tuning (e.g. 1,500 features instead of 2,000) will yield direct FPS gains toward 60 Hz.
-2. **Secondary Bottleneck**: Local Map Projection & G2O BA consumes **7.23 ms** (25.3%). Multi-threading MapPoint projection searches across map points will further accelerate local tracking.
-3. **Epipolar Stereo Match Optimization**: Stereo matching latency dropped to only **1.06 ms** (3.7% of frame time).
+| **1. ORB Feature Extraction** (`Frame::ExtractORB`) | **7.24 ms** (down from 9.12 ms) | **26.9 %** | Parallel grid cell FAST corner detection across CPU cores via OpenMP. |
+| **2. Local Map Projection & BA** (`TrackLocalMap`) | **6.79 ms** (down from 7.23 ms) | **25.2 %** | Parallel map point projection matching across 16 OpenMP threads. |
+| **3. Motion Model Prediction** (`TrackWithMotionModel`) | **3.47 ms** | **12.9 %** | Camera velocity prediction and frame-to-frame feature projection matching. |
+| **4. Epipolar Stereo Matching** (`ComputeStereoMatches`) | **1.11 ms** | **4.1 %** | Sub-pixel stereo keypoint matching (raw-pointer patch correlation & hardware `POPCNT`). |
+| **5. System / Image Frame Overhead** | **7.92 ms** | **29.4 %** | Image decoding, matrix initialization, grid mapping. |
+| **Total Frame Latency** | **26.54 ms** | **100.0 %** | **37.68 Hz (FPS) throughput** (`circle_run` reached **46.60 Hz** / 21.46 ms) |
