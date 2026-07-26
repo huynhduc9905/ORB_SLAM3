@@ -58,6 +58,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <vector>
 #include <iostream>
+#include <omp.h>
 
 #include "ORBextractor.h"
 
@@ -1070,6 +1071,7 @@ namespace ORB_SLAM3
         }
 
         // and compute orientations
+        #pragma omp parallel for schedule(dynamic)
         for (int level = 0; level < nlevels; ++level)
             computeOrientation(mvImagePyramid[level], allKeypoints[level], umax);
     }
@@ -1079,6 +1081,7 @@ namespace ORB_SLAM3
     {
         descriptors = Mat::zeros((int)keypoints.size(), 32, CV_8UC1);
 
+        #pragma omp parallel for schedule(dynamic, 32)
         for (size_t i = 0; i < keypoints.size(); i++)
             computeOrbDescriptor(keypoints[i], image, &pattern[0], descriptors.ptr((int)i));
     }

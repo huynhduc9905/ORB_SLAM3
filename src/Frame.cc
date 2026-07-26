@@ -27,6 +27,7 @@
 #include "GeometricCamera.h"
 
 #include <thread>
+#include <omp.h>
 #include <include/CameraModels/Pinhole.h>
 #include <include/CameraModels/KannalaBrandt8.h>
 
@@ -843,9 +844,9 @@ void Frame::ComputeStereoMatches()
     const float maxD = mbf/minZ;
 
     // For each left keypoint search a match in the right image
-    vector<pair<int, int> > vDistIdx;
-    vDistIdx.reserve(N);
+    vector<pair<int, int> > vDistIdxTemp(N, pair<int,int>(-1, -1));
 
+    #pragma omp parallel for schedule(dynamic, 16)
     for(int iL=0; iL<N; iL++)
     {
         const cv::KeyPoint &kpL = mvKeys[iL];
@@ -907,7 +908,7 @@ void Frame::ComputeStereoMatches()
             const int w = 5;
             cv::Mat IL = mpORBextractorLeft->mvImagePyramid[kpL.octave].rowRange(scaledvL-w,scaledvL+w+1).colRange(scaleduL-w,scaleduL+w+1);
 
-            int bestDist = INT_MAX;
+            int bestDistCorr = INT_MAX;
             int bestincR = 0;
             const int L = 5;
             vector<float> vDists;
@@ -923,9 +924,9 @@ void Frame::ComputeStereoMatches()
                 cv::Mat IR = mpORBextractorRight->mvImagePyramid[kpL.octave].rowRange(scaledvL-w,scaledvL+w+1).colRange(scaleduR0+incR-w,scaleduR0+incR+w+1);
 
                 float dist = cv::norm(IL,IR,cv::NORM_L1);
-                if(dist<bestDist)
+                if(dist<bestDistCorr)
                 {
-                    bestDist =  dist;
+                    bestDistCorr = dist;
                     bestincR = incR;
                 }
 
@@ -959,9 +960,17 @@ void Frame::ComputeStereoMatches()
                 }
                 mvDepth[iL]=mbf/disparity;
                 mvuRight[iL] = bestuR;
-                vDistIdx.push_back(pair<int,int>(bestDist,iL));
+                vDistIdxTemp[iL] = pair<int,int>(bestDist,iL);
             }
         }
+    }
+
+    vector<pair<int, int> > vDistIdx;
+    vDistIdx.reserve(N);
+    for(int iL=0; iL<N; iL++)
+    {
+        if(vDistIdxTemp[iL].first != -1)
+            vDistIdx.push_back(vDistIdxTemp[iL]);
     }
 
     sort(vDistIdx.begin(),vDistIdx.end());
