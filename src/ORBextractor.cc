@@ -488,25 +488,25 @@ namespace ORB_SLAM3
         n1.UR = cv::Point2i(UL.x+halfX,UL.y);
         n1.BL = cv::Point2i(UL.x,UL.y+halfY);
         n1.BR = cv::Point2i(UL.x+halfX,UL.y+halfY);
-        n1.vKeys.reserve(vKeys.size());
+        n1.vKeys.reserve((vKeys.size() >> 1) + 4);
 
         n2.UL = n1.UR;
         n2.UR = UR;
         n2.BL = n1.BR;
         n2.BR = cv::Point2i(UR.x,UL.y+halfY);
-        n2.vKeys.reserve(vKeys.size());
+        n2.vKeys.reserve((vKeys.size() >> 1) + 4);
 
         n3.UL = n1.BL;
         n3.UR = n1.BR;
         n3.BL = BL;
         n3.BR = cv::Point2i(n1.BR.x,BL.y);
-        n3.vKeys.reserve(vKeys.size());
+        n3.vKeys.reserve((vKeys.size() >> 1) + 4);
 
         n4.UL = n3.UR;
         n4.UR = n2.BR;
         n4.BL = n3.BR;
         n4.BR = BR;
-        n4.vKeys.reserve(vKeys.size());
+        n4.vKeys.reserve((vKeys.size() >> 1) + 4);
 
         //Associate points to childs
         for(size_t i=0;i<vKeys.size();i++)
@@ -573,7 +573,7 @@ namespace ORB_SLAM3
             ni.UR = cv::Point2i(hX*static_cast<float>(i+1),0);
             ni.BL = cv::Point2i(ni.UL.x,maxY-minY);
             ni.BR = cv::Point2i(ni.UR.x,maxY-minY);
-            ni.vKeys.reserve(vToDistributeKeys.size());
+            ni.vKeys.reserve((vToDistributeKeys.size() / nIni) + 16);
 
             lNodes.push_back(ni);
             vpIniNodes[i] = &lNodes.back();
@@ -1108,6 +1108,7 @@ namespace ORB_SLAM3
         };
         vector<LevelData> vLevelData(nlevels);
 
+        #pragma omp parallel for schedule(dynamic)
         for (int level = 0; level < nlevels; ++level)
         {
             vector<KeyPoint>& keypoints = allKeypoints[level];
@@ -1146,12 +1147,12 @@ namespace ORB_SLAM3
                 const KeyPoint& keypoint = keypoints[i];
                 if(keypoint.pt.x >= vLappingArea[0] && keypoint.pt.x <= vLappingArea[1]){
                     _keypoints.at(stereoIndex) = keypoint;
-                    desc.row(i).copyTo(descriptors.row(stereoIndex));
+                    std::memcpy(descriptors.ptr<uchar>(stereoIndex), desc.ptr<uchar>(i), 32);
                     stereoIndex--;
                 }
                 else{
                     _keypoints.at(monoIndex) = keypoint;
-                    desc.row(i).copyTo(descriptors.row(monoIndex));
+                    std::memcpy(descriptors.ptr<uchar>(monoIndex), desc.ptr<uchar>(i), 32);
                     monoIndex++;
                 }
             }

@@ -182,39 +182,49 @@ void WebViewerBackend::MirrorWorkerLoop() {
     while (mRunning) {
         std::this_thread::sleep_for(std::chrono::milliseconds(33)); // ~30 Hz loop
 
-        // 1. Frame state
-        auto frame = mpSource->GetLatestFrameState();
-        if (frame) {
-            auto frame_buf = WebViewerProtocol::EncodeFrameState(*frame);
-            mImpl->BroadcastRealtime(frame_buf);
-        }
-
-        // 2. Image state
-        auto image = mpSource->GetLatestImageState();
-        if (image && !image->immutable_grayscale_image.empty()) {
-            auto img_buf = WebViewerProtocol::EncodeImageJpeg(image->epoch, image->frame_sequence, image->capture_timestamp_ns, image->immutable_grayscale_image, mConfig.image_jpeg_quality);
-            mImpl->BroadcastBulk(img_buf);
-
-            if (!image->features.empty()) {
-                auto feat_buf = WebViewerProtocol::EncodeFeatureOverlay(image->epoch, image->frame_sequence, image->capture_timestamp_ns, image->features);
-                mImpl->BroadcastBulk(feat_buf);
+        try {
+            // 1. Frame state
+            auto frame = mpSource->GetLatestFrameState();
+            if (frame) {
+                auto frame_buf = WebViewerProtocol::EncodeFrameState(*frame);
+                mImpl->BroadcastRealtime(frame_buf);
             }
-        }
 
-        // 3. Map events
-        auto events = mpSource->PopPendingMapEvents();
-        for (const auto& ev : events) {
-            if (ev.type == VisualizationEventType::POINTS_ADDED || ev.type == VisualizationEventType::POINTS_UPDATED) {
-                std::lock_guard<std::mutex> lock(mMirrorMutex);
-                for (const auto& pt : ev.points) {
-                    mMirrorPoints[pt.id] = MirrorMapPoint{pt.id, pt.world_position, pt.reference};
+            // 2. Image state
+            auto image = mpSource->GetLatestImageState();
+            if (image && !image->immutable_grayscale_image.empty()) {
+                auto img_buf = WebViewerProtocol::EncodeImageJpeg(image->epoch, image->frame_sequence, image->capture_timestamp_ns, image->immutable_grayscale_image, mConfig.image_jpeg_quality);
+                if (!img_buf.empty()) {
+                    mImpl->BroadcastBulk(img_buf);
                 }
-            } else if (ev.type == VisualizationEventType::POINTS_REMOVED) {
-                std::lock_guard<std::mutex> lock(mMirrorMutex);
-                for (const auto& pt : ev.points) {
-                    mMirrorPoints.erase(pt.id);
+
+                if (!image->features.empty()) {
+                    auto feat_buf = WebViewerProtocol::EncodeFeatureOverlay(image->epoch, image->frame_sequence, image->capture_timestamp_ns, image->features);
+                    if (!feat_buf.empty()) {
+                        mImpl->BroadcastBulk(feat_buf);
+                    }
                 }
             }
+
+            // 3. Map events
+            auto events = mpSource->PopPendingMapEvents();
+            for (const auto& ev : events) {
+                if (ev.type == VisualizationEventType::POINTS_ADDED || ev.type == VisualizationEventType::POINTS_UPDATED) {
+                    std::lock_guard<std::mutex> lock(mMirrorMutex);
+                    for (const auto& pt : ev.points) {
+                        mMirrorPoints[pt.id] = MirrorMapPoint{pt.id, pt.world_position, pt.reference};
+                    }
+                } else if (ev.type == VisualizationEventType::POINTS_REMOVED) {
+                    std::lock_guard<std::mutex> lock(mMirrorMutex);
+                    for (const auto& pt : ev.points) {
+                        mMirrorPoints.erase(pt.id);
+                    }
+                }
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "[WebViewerBackend] MirrorWorkerLoop exception: " << e.what() << std::endl;
+        } catch (...) {
+            std::cerr << "[WebViewerBackend] MirrorWorkerLoop unknown exception" << std::endl;
         }
 
         // Periodically broadcast point chunk
