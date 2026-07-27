@@ -2199,9 +2199,12 @@ void Tracking::Track()
 #endif
 
         // Update drawer
-        mpFrameDrawer->Update(this);
-        if(mCurrentFrame.isSet())
-            mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.GetPose());
+        if(mpViewer)
+        {
+            mpFrameDrawer->Update(this);
+            if(mCurrentFrame.isSet())
+                mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.GetPose());
+        }
 
         if(bOK || mState==RECENTLY_LOST)
         {
@@ -2216,7 +2219,7 @@ void Tracking::Track()
                 mbVelocity = false;
             }
 
-            if(mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO || mSensor == System::IMU_RGBD)
+            if(mpViewer && (mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO || mSensor == System::IMU_RGBD))
                 mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.GetPose());
 
             // Clean VO matches
@@ -3484,7 +3487,8 @@ void Tracking::SearchLocalPoints()
 void Tracking::UpdateLocalMap()
 {
     // This is for visualization
-    mpAtlas->SetReferenceMapPoints(mvpLocalMapPoints);
+    if(mpViewer)
+        mpAtlas->SetReferenceMapPoints(mvpLocalMapPoints);
 
     // Update
     UpdateLocalKeyFrames();

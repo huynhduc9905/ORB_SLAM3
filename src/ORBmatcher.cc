@@ -2073,17 +2073,13 @@ namespace ORB_SLAM3
 // http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
     int ORBmatcher::DescriptorDistance(const cv::Mat &a, const cv::Mat &b)
     {
-        const int *pa = a.ptr<int32_t>();
-        const int *pb = b.ptr<int32_t>();
+        const uint64_t *pa = reinterpret_cast<const uint64_t*>(a.data);
+        const uint64_t *pb = reinterpret_cast<const uint64_t*>(b.data);
 
-        return __builtin_popcount(pa[0] ^ pb[0]) +
-               __builtin_popcount(pa[1] ^ pb[1]) +
-               __builtin_popcount(pa[2] ^ pb[2]) +
-               __builtin_popcount(pa[3] ^ pb[3]) +
-               __builtin_popcount(pa[4] ^ pb[4]) +
-               __builtin_popcount(pa[5] ^ pb[5]) +
-               __builtin_popcount(pa[6] ^ pb[6]) +
-               __builtin_popcount(pa[7] ^ pb[7]);
+        return __builtin_popcountll(pa[0] ^ pb[0]) +
+               __builtin_popcountll(pa[1] ^ pb[1]) +
+               __builtin_popcountll(pa[2] ^ pb[2]) +
+               __builtin_popcountll(pa[3] ^ pb[3]);
     }
 
 } //namespace ORB_SLAM

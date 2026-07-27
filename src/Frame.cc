@@ -813,11 +813,10 @@ void Frame::ComputeStereoMatches()
 
     const int nRows = mpORBextractorLeft->mvImagePyramid[0].rows;
 
-    //Assign keypoints to row table
-    vector<vector<size_t> > vRowIndices(nRows,vector<size_t>());
-
+    // Assign keypoints to row table
+    vector<vector<size_t>> vRowIndices(nRows);
     for(int i=0; i<nRows; i++)
-        vRowIndices[i].reserve(200);
+        vRowIndices[i].reserve(64);
 
     const int Nr = mvKeysRight.size();
 
@@ -839,7 +838,7 @@ void Frame::ComputeStereoMatches()
     const float maxD = mbf/minZ;
 
     // For each left keypoint search a match in the right image
-    vector<pair<int, int> > vDistIdxTemp(N, pair<int,int>(-1, -1));
+    vector<pair<int, int>> vDistIdxTemp(N, pair<int,int>(-1, -1));
 
     #pragma omp parallel for schedule(dynamic, 16)
     for(int iL=0; iL<N; iL++)

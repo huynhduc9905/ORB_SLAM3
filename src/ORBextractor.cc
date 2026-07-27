@@ -827,13 +827,13 @@ namespace ORB_SLAM3
 
                     vector<cv::KeyPoint> vKeysCell;
 
-                    FAST(mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX),
-                         vKeysCell,iniThFAST,true);
+                    const cv::Mat cellMat = mvImagePyramid[level](cv::Rect(iniX, iniY, maxX - iniX, maxY - iniY));
+
+                    FAST(cellMat, vKeysCell, iniThFAST, true);
 
                     if(vKeysCell.empty())
                     {
-                        FAST(mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX),
-                             vKeysCell,minThFAST,true);
+                        FAST(cellMat, vKeysCell, minThFAST, true);
                     }
 
                     if(!vKeysCell.empty())
