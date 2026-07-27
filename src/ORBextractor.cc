@@ -1162,7 +1162,18 @@ namespace ORB_SLAM3
 
     void ORBextractor::ComputePyramid(cv::Mat image)
     {
-        for (int level = 0; level < nlevels; ++level)
+        // Level 0
+        {
+            float scale = mvInvScaleFactor[0];
+            Size sz(cvRound((float)image.cols*scale), cvRound((float)image.rows*scale));
+            Size wholeSize(sz.width + EDGE_THRESHOLD*2, sz.height + EDGE_THRESHOLD*2);
+            Mat temp(wholeSize, image.type());
+            mvImagePyramid[0] = temp(Rect(EDGE_THRESHOLD, EDGE_THRESHOLD, sz.width, sz.height));
+            copyMakeBorder(image, temp, EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD, BORDER_REFLECT_101);
+        }
+
+        #pragma omp parallel for schedule(dynamic)
+        for (int level = 1; level < nlevels; ++level)
         {
             float scale = mvInvScaleFactor[level];
             Size sz(cvRound((float)image.cols*scale), cvRound((float)image.rows*scale));
@@ -1170,19 +1181,9 @@ namespace ORB_SLAM3
             Mat temp(wholeSize, image.type());
             mvImagePyramid[level] = temp(Rect(EDGE_THRESHOLD, EDGE_THRESHOLD, sz.width, sz.height));
 
-            // Compute the resized image
-            if( level != 0 )
-            {
-                resize(mvImagePyramid[level-1], mvImagePyramid[level], sz, 0, 0, INTER_LINEAR);
-
-                copyMakeBorder(mvImagePyramid[level], temp, EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD,
-                               BORDER_REFLECT_101+BORDER_ISOLATED);
-            }
-            else
-            {
-                copyMakeBorder(image, temp, EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD,
-                               BORDER_REFLECT_101);
-            }
+            resize(image, mvImagePyramid[level], sz, 0, 0, INTER_LINEAR);
+            copyMakeBorder(mvImagePyramid[level], temp, EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD,
+                           BORDER_REFLECT_101+BORDER_ISOLATED);
         }
     }
 

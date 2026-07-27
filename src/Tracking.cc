@@ -1883,17 +1883,18 @@ void Tracking::Track()
     }
     mbCreatedMap = false;
 
-    // Get Map Mutex -> Map cannot be changed
-    unique_lock<mutex> lock(pCurrentMap->mMutexMapUpdate);
-
-    mbMapUpdated = false;
-
-    int nCurMapChangeIndex = pCurrentMap->GetMapChangeIndex();
-    int nMapChangeIndex = pCurrentMap->GetLastMapChange();
-    if(nCurMapChangeIndex>nMapChangeIndex)
+    // Check map update status with scoped lock
     {
-        pCurrentMap->SetLastMapChange(nCurMapChangeIndex);
-        mbMapUpdated = true;
+        unique_lock<mutex> lock(pCurrentMap->mMutexMapUpdate);
+        mbMapUpdated = false;
+
+        int nCurMapChangeIndex = pCurrentMap->GetMapChangeIndex();
+        int nMapChangeIndex = pCurrentMap->GetLastMapChange();
+        if(nCurMapChangeIndex>nMapChangeIndex)
+        {
+            pCurrentMap->SetLastMapChange(nCurMapChangeIndex);
+            mbMapUpdated = true;
+        }
     }
 
 

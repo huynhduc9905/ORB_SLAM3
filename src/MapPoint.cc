@@ -452,6 +452,8 @@ void MapPoint::UpdateNormalAndDepth()
     for(map<KeyFrame*,tuple<int,int>>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
     {
         KeyFrame* pKF = mit->first;
+        if(!pKF || pKF->isBad())
+            continue;
 
         tuple<int,int> indexes = mit -> second;
         int leftIndex = get<0>(indexes), rightIndex = get<1>(indexes);
@@ -469,6 +471,9 @@ void MapPoint::UpdateNormalAndDepth()
             n++;
         }
     }
+
+    if(!pRefKF || pRefKF->isBad())
+        return;
 
     Eigen::Vector3f PC = Pos - pRefKF->GetCameraCenter();
     const float dist = PC.norm();

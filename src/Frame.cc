@@ -389,8 +389,10 @@ void Frame::AssignFeaturesToGrid()
     for(unsigned int i=0; i<FRAME_GRID_COLS;i++)
         for (unsigned int j=0; j<FRAME_GRID_ROWS;j++){
             mGrid[i][j].clear();
+            mGrid[i][j].reserve(16);
             if(Nleft != -1){
                 mGridRight[i][j].clear();
+                mGridRight[i][j].reserve(16);
             }
         }
 
@@ -654,7 +656,7 @@ Eigen::Vector3f Frame::inRefCoordinates(Eigen::Vector3f pCw)
 vector<size_t> Frame::GetFeaturesInArea(const float &x, const float  &y, const float  &r, const int minLevel, const int maxLevel, const bool bRight) const
 {
     vector<size_t> vIndices;
-    vIndices.reserve(N);
+    vIndices.reserve(64);
 
     float factorX = r;
     float factorY = r;
