@@ -13,15 +13,17 @@
 | **4. Zero-Clone Frame & Grid Allocation** | 40.74 Hz | 24.54 ms | 33.91 Hz | 29.49 ms | 193.38 s | 100% (5,620 / 5,620) |
 | **5. High-Precision Stage Profiling (`REGISTER_TIMES`)** | 41.80 Hz | 23.92 ms | 35.01 Hz | 28.56 ms | 189.30 s | 100% (5,620 / 5,620) |
 | **6. OpenMP Parallel Grid FAST & Local Map Matching** | 46.60 Hz | 21.46 ms | 37.68 Hz | 26.54 ms | 177.10 s | 100% (5,620 / 5,620) |
-| **7. Lock-Free MapPoints, Zero-Alloc & Parallel Stereo Extraction** | **49.35 Hz** | **20.26 ms** | **39.99 Hz** | **25.01 ms** | **168.37 s** | **100% (5,620 / 5,620)** |
+| **7. Lock-Free MapPoints, Zero-Alloc & Parallel Stereo Extraction** | 49.35 Hz | 20.26 ms | 39.99 Hz | 25.01 ms | 168.37 s | 100% (5,620 / 5,620) |
+| **8. Fast PosInGrid & PoseOptimization Global Mutex Removal** | 50.76 Hz | 19.70 ms | 41.19 Hz | 24.28 ms | 164.20 s | 100% (5,620 / 5,620) |
+| **9. 64-Bit Hardware POPCNT & Visualizer Update Guards** | **51.94 Hz** | **19.25 ms** | **43.77 Hz** | **22.85 ms** | **155.89 s** | **100% (5,620 / 5,620)** |
 
 ## Empirical Stage Timing Breakdown (`full_run` with 2,000 features fixed)
 
 | Sub-System / Function Stage | Execution Time (ms) | % Total Frame Time | Optimizations Applied |
 | :--- | :---: | :---: | :--- |
-| **1. ORB Feature Extraction** (`Frame::ExtractORB`) | **6.35 ms** (down from 9.12 ms) | **25.4 %** | Parallel grid cell FAST corner detection & concurrent stereo image extraction via `std::thread`. |
-| **2. Local Map Projection & BA** (`TrackLocalMap`) | **6.04 ms** (down from 7.23 ms) | **24.2 %** | Lock-free atomic visibility counters (`std::atomic<int>`), zero-alloc observations, OpenMP projection matching. |
-| **3. Motion Model Prediction** (`TrackWithMotionModel`) | **3.35 ms** | **13.4 %** | Camera velocity prediction and frame-to-frame feature projection matching. |
-| **4. Epipolar Stereo Matching** (`ComputeStereoMatches`) | **1.06 ms** | **4.2 %** | Sub-pixel stereo keypoint matching (raw-pointer patch correlation & hardware `POPCNT`). |
-| **5. System / Image Frame Overhead** | **8.21 ms** | **32.8 %** | Image decoding, matrix initialization, grid mapping. |
-| **Total Frame Latency** | **25.01 ms** | **100.0 %** | **39.99 Hz (FPS) throughput** (`circle_run` reached **49.35 Hz** mean / **51.02 Hz** $P_{50}$) |
+| **1. ORB Feature Extraction** (`Frame::ExtractORB`) | **6.21 ms** (down from 9.12 ms) | **27.2 %** | Concurrent stereo `std::thread`, `cv::Rect` submatrix ROI FAST detection, 64-bit POPCNT. |
+| **2. Local Map Projection & BA** (`TrackLocalMap`) | **5.49 ms** (down from 7.23 ms) | **24.0 %** | Lock-free atomic visibility counters, zero-alloc observation callbacks, pose optimization lock removal. |
+| **3. Motion Model Prediction** (`TrackWithMotionModel`) | **3.14 ms** | **13.7 %** | Camera velocity prediction and frame-to-frame feature projection matching. |
+| **4. Epipolar Stereo Matching** (`ComputeStereoMatches`) | **1.04 ms** | **4.6 %** | Sub-pixel stereo keypoint matching (raw-pointer patch correlation & 64-bit hardware `POPCNT`). |
+| **5. System / Image Frame Overhead** | **6.97 ms** | **30.5 %** | Guarded visualizer updates (`mpViewer`), fast float-to-int grid indexing. |
+| **Total Frame Latency** | **22.85 ms** | **100.0 %** | **43.77 Hz (FPS)** mean throughput on `full_run` (`circle_run` reached **51.94 Hz** mean / **54.11 Hz** $P_{50}$) |
