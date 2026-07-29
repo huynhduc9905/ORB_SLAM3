@@ -1,3 +1,4 @@
+
 cmake_minimum_required(VERSION 2.8)
 project(DBoW2)
 
@@ -40,6 +41,8 @@ endif()
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
 include_directories(${OpenCV_INCLUDE_DIRS})
+include_directories("/nix/store/pb7333fnknqxbwr229aqdd2abfvi97yv-boost-1.89.0-dev/include")
 add_library(DBoW2 SHARED ${SRCS_DBOW2} ${SRCS_DUTILS})
 target_link_libraries(DBoW2 ${OpenCV_LIBS})
 
+include_directories("/nix/store/pb7333fnknqxbwr229aqdd2abfvi97yv-boost-1.89.0-dev/include")

@@ -839,7 +839,6 @@ void Frame::ComputeStereoMatches()
     // For each left keypoint search a match in the right image
     vector<pair<int, int>> vDistIdxTemp(N, pair<int,int>(-1, -1));
 
-    #pragma omp parallel for schedule(dynamic, 16)
     for(int iL=0; iL<N; iL++)
     {
         const cv::KeyPoint &kpL = mvKeys[iL];

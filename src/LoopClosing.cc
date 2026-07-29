@@ -2570,7 +2570,6 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
                     pKF->SetNewBias(pKF->mBiasGBA);                    
                 }
 
-                lpKFtoCheck.pop_front();
             }
 
             //cout << "GBA: Correct MapPoints" << endl;

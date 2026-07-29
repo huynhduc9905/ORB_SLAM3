@@ -3429,7 +3429,6 @@ void Tracking::SearchLocalPoints()
 
     int nToMatch=0;
 
-    #pragma omp parallel for reduction(+:nToMatch) schedule(dynamic, 32)
     for(size_t i = 0; i < mvpLocalMapPoints.size(); i++)
     {
         MapPoint* pMP = mvpLocalMapPoints[i];

@@ -41,7 +41,27 @@ namespace ORB_SLAM3
         ORBmatcher(float nnratio=0.6, bool checkOri=true);
 
         // Computes the Hamming distance between two ORB descriptors
-        static int DescriptorDistance(const cv::Mat &a, const cv::Mat &b);
+        static inline int DescriptorDistance(const cv::Mat &a, const cv::Mat &b)
+        {
+            const uint64_t *pa = reinterpret_cast<const uint64_t*>(a.data);
+            const uint64_t *pb = reinterpret_cast<const uint64_t*>(b.data);
+
+            return __builtin_popcountll(pa[0] ^ pb[0]) +
+                   __builtin_popcountll(pa[1] ^ pb[1]) +
+                   __builtin_popcountll(pa[2] ^ pb[2]) +
+                   __builtin_popcountll(pa[3] ^ pb[3]);
+        }
+        
+        static inline int DescriptorDistance(const uchar *pa, const uchar *pb)
+        {
+            const uint64_t *a = reinterpret_cast<const uint64_t*>(pa);
+            const uint64_t *b = reinterpret_cast<const uint64_t*>(pb);
+
+            return __builtin_popcountll(a[0] ^ b[0]) +
+                   __builtin_popcountll(a[1] ^ b[1]) +
+                   __builtin_popcountll(a[2] ^ b[2]) +
+                   __builtin_popcountll(a[3] ^ b[3]);
+        }
 
         // Search matches between Frame keypoints and projected MapPoints. Returns number of matches
         // Used to track the local map (Tracking)

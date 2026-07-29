@@ -57,7 +57,6 @@ namespace ORB_SLAM3
 
     vector<MatchCandidate> vMatches(vpMapPoints.size(), {nullptr, -1, -1, -1, -1});
 
-    #pragma omp parallel for schedule(dynamic, 16)
     for(size_t iMP=0; iMP<vpMapPoints.size(); iMP++)
     {
         MapPoint* pMP = vpMapPoints[iMP];
@@ -103,8 +102,8 @@ namespace ORB_SLAM3
                             continue;
                     }
 
-                    const cv::Mat &d = F.mDescriptors.row(idx);
-                    const int dist = DescriptorDistance(MPdescriptor,d);
+                    const uchar* pD = F.mDescriptors.ptr<uchar>(idx);
+                    const int dist = DescriptorDistance(MPdescriptor.data, pD);
 
                     if(dist<bestDist)
                     {
@@ -162,8 +161,8 @@ namespace ORB_SLAM3
                             if(F.mvpMapPoints[idx + F.Nleft]->Observations()>0)
                                 continue;
 
-                        const cv::Mat &d = F.mDescriptors.row(idx + F.Nleft);
-                        const int dist = DescriptorDistance(MPdescriptor,d);
+                        const uchar* pD = F.mDescriptors.ptr<uchar>(idx + F.Nleft);
+                        const int dist = DescriptorDistance(MPdescriptor.data, pD);
 
                         if(dist<bestDist)
                         {
@@ -1718,7 +1717,6 @@ namespace ORB_SLAM3
 
         vector<MatchResult> vResults(LastFrame.N, {nullptr, -1, -1, -1, -1});
 
-        #pragma omp parallel for schedule(dynamic, 16)
         for(int i=0; i<LastFrame.N; i++)
         {
             MapPoint* pMP = LastFrame.mvpMapPoints[i];
@@ -1781,9 +1779,8 @@ namespace ORB_SLAM3
                             continue;
                     }
 
-                    const cv::Mat &d = CurrentFrame.mDescriptors.row(i2);
-
-                    const int dist = DescriptorDistance(dMP,d);
+                    const uchar* pD = CurrentFrame.mDescriptors.ptr<uchar>(i2);
+                    const int dist = DescriptorDistance(dMP.data, pD);
 
                     if(dist<bestDist)
                     {
@@ -1850,9 +1847,9 @@ namespace ORB_SLAM3
                             if(CurrentFrame.mvpMapPoints[i2 + CurrentFrame.Nleft]->Observations()>0)
                                 continue;
 
-                        const cv::Mat &d = CurrentFrame.mDescriptors.row(i2 + CurrentFrame.Nleft);
+                        const uchar* pD = CurrentFrame.mDescriptors.ptr<uchar>(i2 + CurrentFrame.Nleft);
 
-                        const int dist = DescriptorDistance(dMP,d);
+                        const int dist = DescriptorDistance(dMP.data, pD);
 
                         if(dist<bestDist)
                         {
@@ -1997,9 +1994,9 @@ namespace ORB_SLAM3
                         if(CurrentFrame.mvpMapPoints[i2])
                             continue;
 
-                        const cv::Mat &d = CurrentFrame.mDescriptors.row(i2);
+                        const uchar* pD = CurrentFrame.mDescriptors.ptr<uchar>(i2);
 
-                        const int dist = DescriptorDistance(dMP,d);
+                        const int dist = DescriptorDistance(dMP.data, pD);
 
                         if(dist<bestDist)
                         {
@@ -2097,18 +2094,5 @@ namespace ORB_SLAM3
         }
     }
 
-
-// Bit set count operation from
-// http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
-    int ORBmatcher::DescriptorDistance(const cv::Mat &a, const cv::Mat &b)
-    {
-        const uint64_t *pa = reinterpret_cast<const uint64_t*>(a.data);
-        const uint64_t *pb = reinterpret_cast<const uint64_t*>(b.data);
-
-        return __builtin_popcountll(pa[0] ^ pb[0]) +
-               __builtin_popcountll(pa[1] ^ pb[1]) +
-               __builtin_popcountll(pa[2] ^ pb[2]) +
-               __builtin_popcountll(pa[3] ^ pb[3]);
-    }
 
 } //namespace ORB_SLAM

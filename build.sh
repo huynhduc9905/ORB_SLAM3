@@ -5,7 +5,7 @@ echo "Configuring and building Thirdparty/DBoW2 ..."
 cd Thirdparty/DBoW2
 mkdir -p build
 cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+cmake .. -DCMAKE_BUILD_TYPE=Release -DBoost_INCLUDE_DIR=/nix/store/pb7333fnknqxbwr229aqdd2abfvi97yv-boost-1.89.0-dev/include -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 make -j$(nproc)
 
 cd ../../g2o
@@ -13,7 +13,7 @@ cd ../../g2o
 echo "Configuring and building Thirdparty/g2o ..."
 mkdir -p build
 cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+cmake .. -DCMAKE_BUILD_TYPE=Release -DBoost_INCLUDE_DIR=/nix/store/pb7333fnknqxbwr229aqdd2abfvi97yv-boost-1.89.0-dev/include -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 make -j$(nproc)
 
 cd ../../Sophus
@@ -22,7 +22,7 @@ echo "Configuring and building Thirdparty/Sophus ..."
 rm -rf build
 mkdir -p build
 cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_CXX_FLAGS="-Wno-error"
+cmake .. -DCMAKE_BUILD_TYPE=Release -DBoost_INCLUDE_DIR=/nix/store/pb7333fnknqxbwr229aqdd2abfvi97yv-boost-1.89.0-dev/include -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_CXX_FLAGS="-Wno-error"
 make -j$(nproc)
 
 cd ../../../
@@ -37,5 +37,5 @@ cd ..
 echo "Configuring and building ORB_SLAM3 ..."
 mkdir -p build
 cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+cmake .. -DCMAKE_BUILD_TYPE=Release -DBoost_INCLUDE_DIR=/nix/store/pb7333fnknqxbwr229aqdd2abfvi97yv-boost-1.89.0-dev/include -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 make -j4

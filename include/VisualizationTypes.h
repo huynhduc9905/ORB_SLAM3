@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <vector>
 #include <memory>
-#include <eigen3/Eigen/Core>
+#include <Eigen/Core>
 #include <sophus/se3.hpp>
 #include <opencv2/core.hpp>
 

@@ -13,6 +13,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <System.h>
+#include <unistd.h>
 
 using namespace std;
 
@@ -37,7 +38,7 @@ void BenchmarkCrashHandler(int sig) {
         crash_file.close();
     }
     free(strs);
-    exit(sig);
+    _exit(sig);
 }
 
 void RegisterCrashHandlers() {

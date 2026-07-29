@@ -1,6 +1,8 @@
+
 cmake_minimum_required(VERSION 2.8)
 project(ORB_SLAM3)
 
+add_definitions(-DCOMPILEDWITHC11)
 IF(NOT CMAKE_BUILD_TYPE)
   SET(CMAKE_BUILD_TYPE Release)
 ENDIF()
@@ -38,6 +40,8 @@ ${PROJECT_SOURCE_DIR}/include/CameraModels
 ${PROJECT_SOURCE_DIR}/Thirdparty/Sophus
 ${EIGEN3_INCLUDE_DIR}
 ${Pangolin_INCLUDE_DIRS}
+"/nix/store/pb7333fnknqxbwr229aqdd2abfvi97yv-boost-1.89.0-dev/include"
+"/nix/store/5iga06c6w0pb6p1srgkxzjvrzgf93j1y-openssl-3.6.3-dev/include"
 )
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
@@ -122,8 +126,8 @@ ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
 Boost::thread
 Boost::filesystem
 Boost::serialization
--lssl
--lcrypto
+/nix/store/1p2gjq4x396yj65rig8fyzhrdza0psd6-openssl-3.6.3/lib/libssl.so
+/nix/store/1p2gjq4x396yj65rig8fyzhrdza0psd6-openssl-3.6.3/lib/libcrypto.so
 )
 
 # If RealSense SDK is found the library is added and its examples compiled
@@ -402,3 +406,4 @@ if(realsense2_FOUND)
             Examples_old/Stereo-Inertial/stereo_inertial_realsense_D435i.cc)
     target_link_libraries(stereo_inertial_realsense_D435i_old ${PROJECT_NAME})
 endif()
+include_directories("/nix/store/pb7333fnknqxbwr229aqdd2abfvi97yv-boost-1.89.0-dev/include")
