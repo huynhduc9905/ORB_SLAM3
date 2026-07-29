@@ -431,6 +431,8 @@ namespace ORB_SLAM3
         }
 
         mvImagePyramid.resize(nlevels);
+        mvImagePyramidBlurred.resize(nlevels);
+        mvTempPyramidBuffers.resize(nlevels);
 
         mnFeaturesPerLevel.resize(nlevels);
         float factor = 1.0f / scaleFactor;
@@ -471,7 +473,6 @@ namespace ORB_SLAM3
 
     static void computeOrientation(const Mat& image, vector<KeyPoint>& keypoints, const vector<int>& umax)
     {
-        #pragma omp parallel for schedule(dynamic, 32)
         for (size_t i = 0; i < keypoints.size(); ++i)
         {
             keypoints[i].angle = IC_Angle(image, keypoints[i].pt, umax);
@@ -488,25 +489,25 @@ namespace ORB_SLAM3
         n1.UR = cv::Point2i(UL.x+halfX,UL.y);
         n1.BL = cv::Point2i(UL.x,UL.y+halfY);
         n1.BR = cv::Point2i(UL.x+halfX,UL.y+halfY);
-        n1.vKeys.reserve((vKeys.size() >> 1) + 4);
+        n1.vKeys.reserve(vKeys.size());
 
         n2.UL = n1.UR;
         n2.UR = UR;
         n2.BL = n1.BR;
         n2.BR = cv::Point2i(UR.x,UL.y+halfY);
-        n2.vKeys.reserve((vKeys.size() >> 1) + 4);
+        n2.vKeys.reserve(vKeys.size());
 
         n3.UL = n1.BL;
         n3.UR = n1.BR;
         n3.BL = BL;
         n3.BR = cv::Point2i(n1.BR.x,BL.y);
-        n3.vKeys.reserve((vKeys.size() >> 1) + 4);
+        n3.vKeys.reserve(vKeys.size());
 
         n4.UL = n3.UR;
         n4.UR = n2.BR;
         n4.BL = n3.BR;
         n4.BR = BR;
-        n4.vKeys.reserve((vKeys.size() >> 1) + 4);
+        n4.vKeys.reserve(vKeys.size());
 
         //Associate points to childs
         for(size_t i=0;i<vKeys.size();i++)
@@ -573,7 +574,7 @@ namespace ORB_SLAM3
             ni.UR = cv::Point2i(hX*static_cast<float>(i+1),0);
             ni.BL = cv::Point2i(ni.UL.x,maxY-minY);
             ni.BR = cv::Point2i(ni.UR.x,maxY-minY);
-            ni.vKeys.reserve((vToDistributeKeys.size() / nIni) + 16);
+            ni.vKeys.reserve(vToDistributeKeys.size());
 
             lNodes.push_back(ni);
             vpIniNodes[i] = &lNodes.back();
@@ -805,7 +806,6 @@ namespace ORB_SLAM3
 
             vector<vector<cv::KeyPoint>> vRowKeys(nRows);
 
-            #pragma omp parallel for schedule(dynamic)
             for(int i=0; i<nRows; i++)
             {
                 const float iniY =minBorderY+i*hCell;
@@ -870,11 +870,9 @@ namespace ORB_SLAM3
                 keypoints[i].octave=level;
                 keypoints[i].size = scaledPatchSize;
             }
-        }
 
-        // compute orientations
-        for (int level = 0; level < nlevels; ++level)
             computeOrientation(mvImagePyramid[level], allKeypoints[level], umax);
+        }
     }
 
     void ORBextractor::ComputeKeyPointsOld(std::vector<std::vector<KeyPoint> > &allKeypoints)
@@ -1108,7 +1106,6 @@ namespace ORB_SLAM3
         };
         vector<LevelData> vLevelData(nlevels);
 
-        #pragma omp parallel for schedule(dynamic)
         for (int level = 0; level < nlevels; ++level)
         {
             vector<KeyPoint>& keypoints = allKeypoints[level];
@@ -1117,13 +1114,11 @@ namespace ORB_SLAM3
             if(nkeypointsLevel==0)
                 continue;
 
-            // preprocess the resized image
-            Mat workingMat = mvImagePyramid[level].clone();
-            GaussianBlur(workingMat, workingMat, Size(7, 7), 2, 2, BORDER_REFLECT_101);
+            GaussianBlur(mvImagePyramid[level], mvImagePyramidBlurred[level], Size(7, 7), 2, 2, BORDER_REFLECT_101);
 
             // Compute the descriptors
             Mat desc = cv::Mat(nkeypointsLevel, 32, CV_8U);
-            computeDescriptors(workingMat, keypoints, desc, pattern);
+            computeDescriptors(mvImagePyramidBlurred[level], keypoints, desc, pattern);
 
             float scale = mvScaleFactor[level];
             if (level != 0){
@@ -1147,12 +1142,12 @@ namespace ORB_SLAM3
                 const KeyPoint& keypoint = keypoints[i];
                 if(keypoint.pt.x >= vLappingArea[0] && keypoint.pt.x <= vLappingArea[1]){
                     _keypoints.at(stereoIndex) = keypoint;
-                    std::memcpy(descriptors.ptr<uchar>(stereoIndex), desc.ptr<uchar>(i), 32);
+                    desc.row(i).copyTo(descriptors.row(stereoIndex));
                     stereoIndex--;
                 }
                 else{
                     _keypoints.at(monoIndex) = keypoint;
-                    std::memcpy(descriptors.ptr<uchar>(monoIndex), desc.ptr<uchar>(i), 32);
+                    desc.row(i).copyTo(descriptors.row(monoIndex));
                     monoIndex++;
                 }
             }
@@ -1163,28 +1158,26 @@ namespace ORB_SLAM3
 
     void ORBextractor::ComputePyramid(cv::Mat image)
     {
-        // Level 0
-        {
-            float scale = mvInvScaleFactor[0];
-            Size sz(cvRound((float)image.cols*scale), cvRound((float)image.rows*scale));
-            Size wholeSize(sz.width + EDGE_THRESHOLD*2, sz.height + EDGE_THRESHOLD*2);
-            Mat temp(wholeSize, image.type());
-            mvImagePyramid[0] = temp(Rect(EDGE_THRESHOLD, EDGE_THRESHOLD, sz.width, sz.height));
-            copyMakeBorder(image, temp, EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD, BORDER_REFLECT_101);
-        }
-
-        #pragma omp parallel for schedule(dynamic)
-        for (int level = 1; level < nlevels; ++level)
+        for (int level = 0; level < nlevels; ++level)
         {
             float scale = mvInvScaleFactor[level];
             Size sz(cvRound((float)image.cols*scale), cvRound((float)image.rows*scale));
             Size wholeSize(sz.width + EDGE_THRESHOLD*2, sz.height + EDGE_THRESHOLD*2);
-            Mat temp(wholeSize, image.type());
-            mvImagePyramid[level] = temp(Rect(EDGE_THRESHOLD, EDGE_THRESHOLD, sz.width, sz.height));
 
-            resize(image, mvImagePyramid[level], sz, 0, 0, INTER_LINEAR);
-            copyMakeBorder(mvImagePyramid[level], temp, EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD,
-                           BORDER_REFLECT_101+BORDER_ISOLATED);
+            if(mvTempPyramidBuffers[level].size() != wholeSize || mvTempPyramidBuffers[level].type() != image.type())
+                mvTempPyramidBuffers[level].create(wholeSize, image.type());
+
+            mvImagePyramid[level] = mvTempPyramidBuffers[level](Rect(EDGE_THRESHOLD, EDGE_THRESHOLD, sz.width, sz.height));
+
+            if(level == 0)
+            {
+                copyMakeBorder(image, mvTempPyramidBuffers[level], EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD, BORDER_REFLECT_101);
+            }
+            else
+            {
+                resize(image, mvImagePyramid[level], sz, 0, 0, INTER_LINEAR);
+                copyMakeBorder(mvImagePyramid[level], mvTempPyramidBuffers[level], EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD, EDGE_THRESHOLD, BORDER_REFLECT_101+BORDER_ISOLATED);
+            }
         }
     }
 

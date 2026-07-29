@@ -119,10 +119,10 @@ public:
 
     void clear();
 
-    int GetMapChangeIndex();
-    void IncreaseChangeIndex();
-    int GetLastMapChange();
-    void SetLastMapChange(int currentChangeId);
+    inline int GetMapChangeIndex() { return mnMapChange.load(std::memory_order_relaxed); }
+    inline void IncreaseChangeIndex() { mnMapChange.fetch_add(1, std::memory_order_relaxed); }
+    inline int GetLastMapChange() { return mnMapChangeNotified.load(std::memory_order_relaxed); }
+    inline void SetLastMapChange(int currentChangeId) { mnMapChangeNotified.store(currentChangeId, std::memory_order_relaxed); }
 
     void SetImuInitialized();
     bool isImuInitialized();
@@ -195,8 +195,8 @@ protected:
 
     bool mbImuInitialized;
 
-    int mnMapChange;
-    int mnMapChangeNotified;
+    std::atomic<int> mnMapChange{0};
+    std::atomic<int> mnMapChangeNotified{0};
 
     long unsigned int mnInitKFid;
     long unsigned int mnMaxKFid;

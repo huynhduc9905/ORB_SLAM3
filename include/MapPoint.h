@@ -122,6 +122,7 @@ public:
 
     std::map<KeyFrame*,std::tuple<int,int>> GetObservations();
     int Observations();
+    bool isBad();
 
     void AddObservation(KeyFrame* pKF,int idx);
     void EraseObservation(KeyFrame* pKF);
@@ -130,7 +131,6 @@ public:
     bool IsInKeyFrame(KeyFrame* pKF);
 
     void SetBadFlag();
-    bool isBad();
 
     void Replace(MapPoint* pMP);    
     MapPoint* GetReplaced();
@@ -155,6 +155,7 @@ public:
     }
 
     cv::Mat GetDescriptor();
+    void CopyDescriptor(uchar* outBuf);
 
     void UpdateNormalAndDepth();
 
@@ -162,6 +163,14 @@ public:
     float GetMaxDistanceInvariance();
     int PredictScale(const float &currentDist, KeyFrame*pKF);
     int PredictScale(const float &currentDist, Frame* pF);
+
+    struct PosData {
+        Eigen::Vector3f worldPos;
+        Eigen::Vector3f normal;
+        float minDist;
+        float maxDist;
+    };
+    PosData GetPosData();
 
     Map* GetMap();
     void UpdateMap(Map* pMap);
@@ -178,7 +187,7 @@ public:
     long int mnFirstFrame;
     int nObs;
 
-    // Variables used by the tracking
+     // Variables used by the tracking
     float mTrackProjX;
     float mTrackProjY;
     float mTrackDepth;
@@ -239,8 +248,8 @@ protected:
      long unsigned int mBackupRefKFId;
 
      // Tracking counters
-     std::atomic<int> mnVisible;
-     std::atomic<int> mnFound;
+     int mnVisible;
+     int mnFound;
 
      // Bad flag (we do not currently erase MapPoint from memory)
      bool mbBad;

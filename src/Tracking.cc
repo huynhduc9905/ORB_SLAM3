@@ -2324,7 +2324,7 @@ void Tracking::Track()
 
     }
 
-    if (mpSystem && mpSystem->GetVisualizationSource()) {
+    if (mpSystem && mpSystem->GetVisualizationSource() && mpSystem->GetVisualizationSource()->HasSubscribers()) {
         VisualizationFrameSnapshot frame_snap;
         frame_snap.epoch = mpSystem->GetVisualizationSource()->GetCurrentEpoch();
         frame_snap.sequence = mCurrentFrame.mnId;

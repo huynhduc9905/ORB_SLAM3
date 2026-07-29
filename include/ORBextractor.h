@@ -81,6 +81,8 @@ public:
     }
 
     std::vector<cv::Mat> mvImagePyramid;
+    std::vector<cv::Mat> mvImagePyramidBlurred;
+    std::vector<cv::Mat> mvTempPyramidBuffers;
 
 protected:
 

@@ -734,6 +734,7 @@ void KeyFrame::SetBadKeyframeConnectionsLockedTestHook(std::function<void()> hoo
 }
 #endif
 
+
 bool KeyFrame::isBad()
 {
     unique_lock<mutex> lock(mMutexConnections);

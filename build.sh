@@ -38,4 +38,4 @@ echo "Configuring and building ORB_SLAM3 ..."
 mkdir -p build
 cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
-make -j$(nproc)
+make -j4

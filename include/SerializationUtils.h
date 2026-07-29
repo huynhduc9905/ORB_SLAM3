@@ -163,4 +163,28 @@ void serializeVectorKeyPoints(Archive& ar, const std::vector<cv::KeyPoint>& vKP,
 
 } // namespace ORB_SLAM3
 
+#include <atomic>
+
+namespace boost {
+namespace serialization {
+
+template<class Archive, typename T>
+inline void serialize(Archive & ar, std::atomic<T> & a, const unsigned int version)
+{
+    if (Archive::is_saving::value)
+    {
+        T val = a.load();
+        ar & val;
+    }
+    else
+    {
+        T val;
+        ar & val;
+        a.store(val);
+    }
+}
+
+} // namespace serialization
+} // namespace boost
+
 #endif // SERIALIZATION_UTILS_H

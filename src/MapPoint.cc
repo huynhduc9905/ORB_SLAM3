@@ -131,6 +131,11 @@ Eigen::Vector3f MapPoint::GetNormal() {
     return mNormalVector;
 }
 
+MapPoint::PosData MapPoint::GetPosData() {
+    unique_lock<mutex> lock(mMutexPos);
+    return {mWorldPos, mNormalVector, 0.8f * mfMinDistance, 1.2f * mfMaxDistance};
+}
+
 
 KeyFrame* MapPoint::GetReferenceKeyFrame()
 {
@@ -320,7 +325,7 @@ void MapPoint::IncreaseFound(int n)
 
 float MapPoint::GetFoundRatio()
 {
-    return static_cast<float>(mnFound.load())/mnVisible.load();
+    return static_cast<float>(mnFound)/mnVisible;
 }
 
 void MapPoint::ComputeDistinctiveDescriptors()
@@ -410,7 +415,14 @@ void MapPoint::ComputeDistinctiveDescriptors()
 cv::Mat MapPoint::GetDescriptor()
 {
     unique_lock<mutex> lock(mMutexFeatures);
-    return mDescriptor.clone();
+    return mDescriptor;
+}
+
+void MapPoint::CopyDescriptor(uchar* outBuf)
+{
+    unique_lock<mutex> lock(mMutexFeatures);
+    if(mDescriptor.data)
+        std::memcpy(outBuf, mDescriptor.data, 32);
 }
 
 tuple<int,int> MapPoint::GetIndexInKeyFrame(KeyFrame *pKF)

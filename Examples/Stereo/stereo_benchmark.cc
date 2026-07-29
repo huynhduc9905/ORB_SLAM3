@@ -72,6 +72,7 @@ void LoadStereoImages(const string &strPathToSequence, vector<string> &vstrImage
 }
 
 int main(int argc, char **argv) {
+    cv::setNumThreads(1);
     RegisterCrashHandlers();
 
     if(argc < 4) {
@@ -114,7 +115,7 @@ int main(int argc, char **argv) {
         float ttrack = std::chrono::duration_cast<std::chrono::duration<float, std::milli>>(t2 - t1).count();
         vTrackTimes.push_back(ttrack);
 
-        if(i % 500 == 0) {
+        if(true) {
             cout << "Processed " << i << "/" << nImages << " frames (latency: " << fixed << setprecision(2) << ttrack << " ms)" << endl;
         }
     }

@@ -22,10 +22,14 @@ public:
     std::shared_ptr<const VisualizationImageSnapshot> GetLatestImageState() const;
     std::vector<VisualizationMapEvent> PopPendingMapEvents();
 
+    bool HasSubscribers() const { return mHasSubscribers.load(std::memory_order_relaxed); }
+    void SetHasSubscribers(bool active) { mHasSubscribers.store(active, std::memory_order_relaxed); }
+
     std::uint64_t GetCurrentEpoch() const { return mEpoch.load(); }
     void IncrementEpoch() { mEpoch++; }
 
 private:
+    std::atomic<bool> mHasSubscribers{false};
     std::atomic<std::uint64_t> mEpoch{1};
 
     mutable std::mutex mFrameMutex;

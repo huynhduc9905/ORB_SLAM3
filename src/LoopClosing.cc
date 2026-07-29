@@ -2449,12 +2449,18 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
             // cout << "LC: Update Map Mutex adquired" << endl;
 
             //pActiveMap->PrintEssentialGraph();
-            // Correct keyframes starting at map first keyframe
+            vector<KeyFrame*> vpMapKFs = pActiveMap->GetAllKeyFrames();
+            set<KeyFrame*> spMapKFs(vpMapKFs.begin(), vpMapKFs.end());
             list<KeyFrame*> lpKFtoCheck(pActiveMap->mvpKeyFrameOrigins.begin(),pActiveMap->mvpKeyFrameOrigins.end());
 
             while(!lpKFtoCheck.empty())
             {
                 KeyFrame* pKF = lpKFtoCheck.front();
+                lpKFtoCheck.pop_front();
+
+                if(!pKF || !spMapKFs.count(pKF) || pKF->isBad())
+                    continue;
+
                 const set<KeyFrame*> sChilds = pKF->GetChilds();
                 //cout << "---Updating KF " << pKF->mnId << " with " << sChilds.size() << " childs" << endl;
                 //cout << " KF mnBAGlobalForKF: " << pKF->mnBAGlobalForKF << endl;
@@ -2464,7 +2470,7 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
                 for(set<KeyFrame*>::const_iterator sit=sChilds.begin();sit!=sChilds.end();sit++)
                 {
                     KeyFrame* pChild = *sit;
-                    if(!pChild || pChild->isBad())
+                    if(!pChild || !spMapKFs.count(pChild) || pChild->isBad())
                         continue;
 
                     if(pChild->mnBAGlobalForKF!=nLoopKF)

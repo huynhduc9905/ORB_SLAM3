@@ -4,6 +4,8 @@ import os
 import subprocess
 import sys
 
+import time
+
 def run_benchmark(dataset_path, output_json):
     cmd = [
         "./Examples/Stereo/stereo_benchmark",
@@ -15,7 +17,9 @@ def run_benchmark(dataset_path, output_json):
     print(f"==================================================")
     print(f"Starting ORB-SLAM3 Baseline Benchmark on: {dataset_path}")
     print(f"==================================================")
-    res = subprocess.run(["nix", "develop", "--command"] + cmd, capture_output=True, text=True)
+    nix_bin = "/nix/store/g5kyy7iiizp0swcxgjz6q0g9hhjm17gy-determinate-nix-3.21.8/bin/nix"
+    full_cmd = [nix_bin, "develop", "--command"] + cmd if os.path.exists(nix_bin) else cmd
+    res = subprocess.run(full_cmd, capture_output=True, text=True)
     if res.returncode != 0:
         print(f"[CRASH DETECTED] Benchmark exited with code {res.returncode} on {dataset_path}")
         crash_log_path = "docs/superpowers/artifacts/benchmark_crash_dump.log"
@@ -39,6 +43,7 @@ def main():
             res = run_benchmark(ds, json_file)
             if res:
                 results[os.path.basename(ds)] = res
+            time.sleep(3)
 
     os.makedirs("docs/superpowers/artifacts", exist_ok=True)
     out_json_path = "docs/superpowers/artifacts/baseline_benchmark_results.json"

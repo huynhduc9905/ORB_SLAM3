@@ -20,6 +20,7 @@
 #ifndef ORBMATCHER_H
 #define ORBMATCHER_H
 
+#include<cstring>
 #include<vector>
 #include<opencv2/core/core.hpp>
 #include<opencv2/features2d/features2d.hpp>
@@ -40,27 +41,7 @@ namespace ORB_SLAM3
         ORBmatcher(float nnratio=0.6, bool checkOri=true);
 
         // Computes the Hamming distance between two ORB descriptors
-        static inline int DescriptorDistance(const cv::Mat &a, const cv::Mat &b)
-        {
-            const uint64_t *pa = reinterpret_cast<const uint64_t*>(a.data);
-            const uint64_t *pb = reinterpret_cast<const uint64_t*>(b.data);
-
-            return __builtin_popcountll(pa[0] ^ pb[0]) +
-                   __builtin_popcountll(pa[1] ^ pb[1]) +
-                   __builtin_popcountll(pa[2] ^ pb[2]) +
-                   __builtin_popcountll(pa[3] ^ pb[3]);
-        }
-
-        static inline int DescriptorDistance(const uchar *pa_bytes, const uchar *pb_bytes)
-        {
-            const uint64_t *pa = reinterpret_cast<const uint64_t*>(pa_bytes);
-            const uint64_t *pb = reinterpret_cast<const uint64_t*>(pb_bytes);
-
-            return __builtin_popcountll(pa[0] ^ pb[0]) +
-                   __builtin_popcountll(pa[1] ^ pb[1]) +
-                   __builtin_popcountll(pa[2] ^ pb[2]) +
-                   __builtin_popcountll(pa[3] ^ pb[3]);
-        }
+        static int DescriptorDistance(const cv::Mat &a, const cv::Mat &b);
 
         // Search matches between Frame keypoints and projected MapPoints. Returns number of matches
         // Used to track the local map (Tracking)

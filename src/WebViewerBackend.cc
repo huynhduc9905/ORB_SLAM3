@@ -63,6 +63,11 @@ public:
         }
     }
 
+    bool HasClients() {
+        std::lock_guard<std::mutex> lock(mSocketsMutex);
+        return !mRealtimeSockets.empty() || !mBulkSockets.empty();
+    }
+
 private:
     void RunServer() {
         while (mRunning) {
@@ -181,6 +186,10 @@ void WebViewerBackend::Stop() {
 void WebViewerBackend::MirrorWorkerLoop() {
     while (mRunning) {
         std::this_thread::sleep_for(std::chrono::milliseconds(33)); // ~30 Hz loop
+
+        if (mpSource) {
+            mpSource->SetHasSubscribers(mImpl->HasClients());
+        }
 
         try {
             // 1. Frame state

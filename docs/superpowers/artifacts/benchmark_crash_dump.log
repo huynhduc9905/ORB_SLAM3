@@ -1108,3 +1108,333 @@ System.thFarPoints optional parameter does not exist...
 /nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
 /nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
 
+CRASH SIGNAL: 11
+STACK TRACE:
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgcodecs.so.413(+0x29ce5) [0x7ffff216dce5]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgcodecs.so.413(_ZN2cv20imencodeWithMetadataERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEERKNS_11_InputArrayERKSt6vectorIiSaIiEESA_RSB_IhSaIhEESF_+0x7e) [0x7ffff217738e]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgcodecs.so.413(_ZN2cv8imencodeERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEERKNS_11_InputArrayERSt6vectorIhSaIhEERKSB_IiSaIiEE+0x56) [0x7ffff2179036]
+/data/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM317WebViewerProtocol15EncodeImageJpegEmmlRKN2cv3MatEi+0x214) [0x7ffff7ed1904]
+/data/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM316WebViewerBackend16MirrorWorkerLoopEv+0x220) [0x7ffff7ee0050]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+CRASH SIGNAL: 11
+STACK TRACE:
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/data/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM39Optimizer16BundleAdjustmentERKSt6vectorIPNS_8KeyFrameESaIS3_EERKS1_IPNS_8MapPointESaIS9_EEiPbmbPKSt6atomicIbE+0x2135) [0x7ffff7cab255]
+/data/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM39Optimizer22GlobalBundleAdjustemntEPNS_3MapEiPbmbPKSt6atomicIbE+0x71) [0x7ffff7cacc71]
+/data/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM311LoopClosing25RunGlobalBundleAdjustmentEPNS_3MapEmm+0x351) [0x7ffff7c23c01]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+
+--- CRASH LOG (dataset/circle_run) ---
+Return code: 11
+Camera1.k3 optional parameter does not exist...
+Camera2.k3 optional parameter does not exist...
+Camera.newHeight optional parameter does not exist...
+Camera.newWidth optional parameter does not exist...
+Viewer.imageViewScale optional parameter does not exist...
+System.LoadAtlasFromFile optional parameter does not exist...
+System.SaveAtlasToFile optional parameter does not exist...
+System.thFarPoints optional parameter does not exist...
+
+==================================================
+  CRASH DETECTED IN BENCHMARK RUNNER (Signal 11)
+==================================================
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/data/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM39Optimizer16BundleAdjustmentERKSt6vectorIPNS_8KeyFrameESaIS3_EERKS1_IPNS_8MapPointESaIS9_EEiPbmbPKSt6atomicIbE+0x2135) [0x7ffff7cab255]
+/data/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM39Optimizer22GlobalBundleAdjustemntEPNS_3MapEiPbmbPKSt6atomicIbE+0x71) [0x7ffff7cacc71]
+/data/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM311LoopClosing25RunGlobalBundleAdjustmentEPNS_3MapEmm+0x351) [0x7ffff7c23c01]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+
+CRASH SIGNAL: 11
+STACK TRACE:
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/data/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM311LoopClosing25RunGlobalBundleAdjustmentEPNS_3MapEmm+0xd4f) [0x7ffff7c245ff]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+
+--- CRASH LOG (dataset/full_run) ---
+Return code: 11
+Camera1.k3 optional parameter does not exist...
+Camera2.k3 optional parameter does not exist...
+Camera.newHeight optional parameter does not exist...
+Camera.newWidth optional parameter does not exist...
+Viewer.imageViewScale optional parameter does not exist...
+System.LoadAtlasFromFile optional parameter does not exist...
+System.SaveAtlasToFile optional parameter does not exist...
+System.thFarPoints optional parameter does not exist...
+
+==================================================
+  CRASH DETECTED IN BENCHMARK RUNNER (Signal 11)
+==================================================
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/data/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM311LoopClosing25RunGlobalBundleAdjustmentEPNS_3MapEmm+0xd4f) [0x7ffff7c245ff]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+
+CRASH SIGNAL: 11
+STACK TRACE:
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+[0x5555556a9310]
+CRASH SIGNAL: 11
+STACK TRACE:
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/data/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM311LoopClosing25RunGlobalBundleAdjustmentEPNS_3MapEmm+0xd32) [0x7ffff7c16c22]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+CRASH SIGNAL: 11
+STACK TRACE:
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+
+--- CRASH LOG (dataset/circle_run) ---
+Return code: 11
+Camera1.k3 optional parameter does not exist...
+Camera2.k3 optional parameter does not exist...
+Camera.newHeight optional parameter does not exist...
+Camera.newWidth optional parameter does not exist...
+Viewer.imageViewScale optional parameter does not exist...
+System.LoadAtlasFromFile optional parameter does not exist...
+System.SaveAtlasToFile optional parameter does not exist...
+System.thFarPoints optional parameter does not exist...
+
+==================================================
+  CRASH DETECTED IN BENCHMARK RUNNER (Signal 11)
+==================================================
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/data/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM311LoopClosing25RunGlobalBundleAdjustmentEPNS_3MapEmm+0xd32) [0x7ffff7c16c22]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+
+==================================================
+  CRASH DETECTED IN BENCHMARK RUNNER (Signal 11)
+==================================================
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+
+CRASH SIGNAL: 11
+STACK TRACE:
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/data/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM311LoopClosing25RunGlobalBundleAdjustmentEPNS_3MapEmm+0xd32) [0x7ffff7c16c62]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+CRASH SIGNAL: 11
+STACK TRACE:
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgcodecs.so.413(+0x2a933) [0x7ffff216e933]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgcodecs.so.413(+0x3275a) [0x7ffff217675a]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgcodecs.so.413(_ZN2cv6imreadERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEi+0x6b) [0x7ffff21770eb]
+./Examples/Stereo/stereo_benchmark(+0x3d2e) [0x555555557d2e]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x2b285) [0x7fffef62b285]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(__libc_start_main+0x88) [0x7fffef62b338]
+./Examples/Stereo/stereo_benchmark(+0x5d45) [0x555555559d45]
+
+--- CRASH LOG (dataset/full_run) ---
+Return code: 11
+Camera1.k3 optional parameter does not exist...
+Camera2.k3 optional parameter does not exist...
+Camera.newHeight optional parameter does not exist...
+Camera.newWidth optional parameter does not exist...
+Viewer.imageViewScale optional parameter does not exist...
+System.LoadAtlasFromFile optional parameter does not exist...
+System.SaveAtlasToFile optional parameter does not exist...
+System.thFarPoints optional parameter does not exist...
+[WebViewer] Failed to start server: bind: Address already in use [system:98 at /nix/store/LZ469BNWDYWS7KX8JA0FAF9Y945Y9KSH-boost-1.89.0-dev/include/boost/asio/detail/reactive_socket_service.hpp:161 in function 'bind']
+
+==================================================
+  CRASH DETECTED IN BENCHMARK RUNNER (Signal 11)
+==================================================
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/data/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM311LoopClosing25RunGlobalBundleAdjustmentEPNS_3MapEmm+0xd32) [0x7ffff7c16c62]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+
+==================================================
+  CRASH DETECTED IN BENCHMARK RUNNER (Signal 11)
+==================================================
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgcodecs.so.413(+0x2a933) [0x7ffff216e933]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgcodecs.so.413(+0x3275a) [0x7ffff217675a]
+/nix/store/gdiks7jz7v6lfc67xbv21x9f9d3i7vyq-opencv-4.13.0/lib/libopencv_imgcodecs.so.413(_ZN2cv6imreadERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEi+0x6b) [0x7ffff21770eb]
+./Examples/Stereo/stereo_benchmark(+0x3d2e) [0x555555557d2e]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x2b285) [0x7fffef62b285]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(__libc_start_main+0x88) [0x7fffef62b338]
+./Examples/Stereo/stereo_benchmark(+0x5d45) [0x555555559d45]
+
+
+--- CRASH LOG (dataset/full_run) ---
+Return code: -9
+Camera1.k3 optional parameter does not exist...
+Camera2.k3 optional parameter does not exist...
+Camera.newHeight optional parameter does not exist...
+Camera.newWidth optional parameter does not exist...
+Viewer.imageViewScale optional parameter does not exist...
+System.LoadAtlasFromFile optional parameter does not exist...
+System.SaveAtlasToFile optional parameter does not exist...
+System.thFarPoints optional parameter does not exist...
+
+
+--- CRASH LOG (dataset/full_run) ---
+Return code: -9
+Camera1.k3 optional parameter does not exist...
+Camera2.k3 optional parameter does not exist...
+Camera.newHeight optional parameter does not exist...
+Camera.newWidth optional parameter does not exist...
+Viewer.imageViewScale optional parameter does not exist...
+System.LoadAtlasFromFile optional parameter does not exist...
+System.SaveAtlasToFile optional parameter does not exist...
+System.thFarPoints optional parameter does not exist...
+[WebViewer] Failed to start server: bind: Address already in use [system:98 at /nix/store/LZ469BNWDYWS7KX8JA0FAF9Y945Y9KSH-boost-1.89.0-dev/include/boost/asio/detail/reactive_socket_service.hpp:161 in function 'bind']
+
+CRASH SIGNAL: 11
+STACK TRACE:
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/data/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM311LoopClosing25RunGlobalBundleAdjustmentEPNS_3MapEmm+0xd32) [0x7ffff7c16ca2]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+
+--- CRASH LOG (dataset/full_run) ---
+Return code: 11
+Camera1.k3 optional parameter does not exist...
+Camera2.k3 optional parameter does not exist...
+Camera.newHeight optional parameter does not exist...
+Camera.newWidth optional parameter does not exist...
+Viewer.imageViewScale optional parameter does not exist...
+System.LoadAtlasFromFile optional parameter does not exist...
+System.SaveAtlasToFile optional parameter does not exist...
+System.thFarPoints optional parameter does not exist...
+
+==================================================
+  CRASH DETECTED IN BENCHMARK RUNNER (Signal 11)
+==================================================
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/data/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM311LoopClosing25RunGlobalBundleAdjustmentEPNS_3MapEmm+0xd32) [0x7ffff7c16ca2]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+
+CRASH SIGNAL: 11
+STACK TRACE:
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/data/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM311LoopClosing25RunGlobalBundleAdjustmentEPNS_3MapEmm+0xd32) [0x7ffff7c16ca2]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+
+--- CRASH LOG (dataset/full_run) ---
+Return code: 11
+Camera1.k3 optional parameter does not exist...
+Camera2.k3 optional parameter does not exist...
+Camera.newHeight optional parameter does not exist...
+Camera.newWidth optional parameter does not exist...
+Viewer.imageViewScale optional parameter does not exist...
+System.LoadAtlasFromFile optional parameter does not exist...
+System.SaveAtlasToFile optional parameter does not exist...
+System.thFarPoints optional parameter does not exist...
+
+==================================================
+  CRASH DETECTED IN BENCHMARK RUNNER (Signal 11)
+==================================================
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/data/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM311LoopClosing25RunGlobalBundleAdjustmentEPNS_3MapEmm+0xd32) [0x7ffff7c16ca2]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+
+
+--- CRASH LOG (dataset/full_run) ---
+Return code: -9
+Camera1.k3 optional parameter does not exist...
+Camera2.k3 optional parameter does not exist...
+Camera.newHeight optional parameter does not exist...
+Camera.newWidth optional parameter does not exist...
+Viewer.imageViewScale optional parameter does not exist...
+System.LoadAtlasFromFile optional parameter does not exist...
+System.SaveAtlasToFile optional parameter does not exist...
+System.thFarPoints optional parameter does not exist...
+
+
+--- CRASH LOG (dataset/full_run) ---
+Return code: -9
+Camera1.k3 optional parameter does not exist...
+Camera2.k3 optional parameter does not exist...
+Camera.newHeight optional parameter does not exist...
+Camera.newWidth optional parameter does not exist...
+Viewer.imageViewScale optional parameter does not exist...
+System.LoadAtlasFromFile optional parameter does not exist...
+System.SaveAtlasToFile optional parameter does not exist...
+System.thFarPoints optional parameter does not exist...
+
+CRASH SIGNAL: 11
+STACK TRACE:
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/data/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM311LoopClosing25RunGlobalBundleAdjustmentEPNS_3MapEmm+0xc6c) [0x7ffff7c0dacc]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+
+--- CRASH LOG (dataset/full_run) ---
+Return code: 11
+Camera1.k3 optional parameter does not exist...
+Camera2.k3 optional parameter does not exist...
+Camera.newHeight optional parameter does not exist...
+Camera.newWidth optional parameter does not exist...
+Viewer.imageViewScale optional parameter does not exist...
+System.LoadAtlasFromFile optional parameter does not exist...
+System.SaveAtlasToFile optional parameter does not exist...
+System.thFarPoints optional parameter does not exist...
+
+==================================================
+  CRASH DETECTED IN BENCHMARK RUNNER (Signal 11)
+==================================================
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/data/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM311LoopClosing25RunGlobalBundleAdjustmentEPNS_3MapEmm+0xc6c) [0x7ffff7c0dacc]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]
+
+CRASH SIGNAL: 6
+STACK TRACE:
+./Examples/Stereo/stereo_benchmark(+0x6ed8) [0x55555555aed8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x422a0) [0x7fffef6422a0]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9eecc) [0x7fffef69eecc]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(gsignal+0x1e) [0x7fffef64216e]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(abort+0x26) [0x7fffef629350]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x2a3c8) [0x7fffef62a3c8]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0xa9b15) [0x7fffef6a9b15]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0xabc48) [0x7fffef6abc48]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0xabe81) [0x7fffef6abe81]
+/data/ORB_SLAM3/lib/libORB_SLAM3.so(_ZN9ORB_SLAM311LoopClosing25RunGlobalBundleAdjustmentEPNS_3MapEmm+0xd12) [0x7ffff7c0dbb2]
+/nix/store/0iv8glcslgfcgn371lbjr5jjw5a6cqir-gcc-15.3.0-lib/lib/libstdc++.so.6(+0xf2ea4) [0x7fffefaf2ea4]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x9ce53) [0x7fffef69ce53]
+/nix/store/l8si8gnvvq93yzms1jsgh5aixyf9rl5x-glibc-2.42-67/lib/libc.so.6(+0x12407c) [0x7fffef72407c]

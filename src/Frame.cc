@@ -515,20 +515,21 @@ bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
         pMP->mTrackProjX = -1;
         pMP->mTrackProjY = -1;
 
-        // 3D in absolute coordinates
-        Eigen::Matrix<float,3,1> P = pMP->GetWorldPos();
+        // Fetch all position data in one lock
+        const MapPoint::PosData pd = pMP->GetPosData();
 
         // 3D in camera coordinates
-        const Eigen::Matrix<float,3,1> Pc = mRcw * P + mtcw;
+        const Eigen::Matrix<float,3,1> Pc = mRcw * pd.worldPos + mtcw;
         const float Pc_dist = Pc.norm();
 
-        // Check positive depth
         const float &PcZ = Pc(2);
-        const float invz = 1.0f/PcZ;
-        if(PcZ<0.0f)
+        if(PcZ <= 0.0f)
             return false;
+        const float invz = 1.0f / PcZ;
 
-        const Eigen::Vector2f uv = mpCamera->project(Pc);
+        const Eigen::Vector2f uv = (mpCamera->GetType() == GeometricCamera::CAM_PINHOLE)
+            ? Eigen::Vector2f(fx * Pc(0) * invz + cx, fy * Pc(1) * invz + cy)
+            : mpCamera->project(Pc);
 
         if(uv(0)<mnMinX || uv(0)>mnMaxX)
             return false;
@@ -539,18 +540,14 @@ bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
         pMP->mTrackProjY = uv(1);
 
         // Check distance is in the scale invariance region of the MapPoint
-        const float maxDistance = pMP->GetMaxDistanceInvariance();
-        const float minDistance = pMP->GetMinDistanceInvariance();
-        const Eigen::Vector3f PO = P - mOw;
+        const Eigen::Vector3f PO = pd.worldPos - mOw;
         const float dist = PO.norm();
 
-        if(dist<minDistance || dist>maxDistance)
+        if(dist<pd.minDist || dist>pd.maxDist)
             return false;
 
         // Check viewing angle
-        Eigen::Vector3f Pn = pMP->GetNormal();
-
-        const float viewCos = PO.dot(Pn)/dist;
+        const float viewCos = PO.dot(pd.normal)/dist;
 
         if(viewCos<viewingCosLimit)
             return false;
@@ -577,8 +574,8 @@ bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
         pMP -> mnTrackScaleLevel = -1;
         pMP -> mnTrackScaleLevelR = -1;
 
-        pMP->mbTrackInView = isInFrustumChecks(pMP,viewingCosLimit);
-        pMP->mbTrackInViewR = isInFrustumChecks(pMP,viewingCosLimit,true);
+        pMP->mbTrackInView = isInFrustumChecks(pMP, viewingCosLimit);
+        pMP->mbTrackInViewR = isInFrustumChecks(pMP, viewingCosLimit, true);
 
         return pMP->mbTrackInView || pMP->mbTrackInViewR;
     }
@@ -864,7 +861,7 @@ void Frame::ComputeStereoMatches()
         int bestDist = ORBmatcher::TH_HIGH;
         size_t bestIdxR = 0;
 
-        const cv::Mat &dL = mDescriptors.row(iL);
+        const uchar* pDL = mDescriptors.ptr<uchar>(iL);
 
         // Compare descriptor to right keypoints
         for(size_t iC=0; iC<vCandidates.size(); iC++)
@@ -879,8 +876,8 @@ void Frame::ComputeStereoMatches()
 
             if(uR>=minU && uR<=maxU)
             {
-                const cv::Mat &dR = mDescriptorsRight.row(iR);
-                const int dist = ORBmatcher::DescriptorDistance(dL,dR);
+                const uchar* pDR = mDescriptorsRight.ptr<uchar>(iR);
+                const int dist = ORBmatcher::DescriptorDistance(pDL, pDR);
 
                 if(dist<bestDist)
                 {
@@ -1187,8 +1184,9 @@ void Frame::ComputeStereoFishEyeMatches() {
 }
 
 bool Frame::isInFrustumChecks(MapPoint *pMP, float viewingCosLimit, bool bRight) {
-    // 3D in absolute coordinates
-    Eigen::Vector3f P = pMP->GetWorldPos();
+    // Fetch all position data under a single mutex lock
+    const MapPoint::PosData pd = pMP->GetPosData();
+    const Eigen::Vector3f& P = pd.worldPos;
 
     Eigen::Matrix3f mR;
     Eigen::Vector3f mt, twc;
@@ -1205,44 +1203,39 @@ bool Frame::isInFrustumChecks(MapPoint *pMP, float viewingCosLimit, bool bRight)
         twc = mOw;
     }
 
-    // 3D in camera coordinates
-    Eigen::Vector3f Pc = mR * P + mt;
+    const Eigen::Vector3f Pc = mR * P + mt;
     const float Pc_dist = Pc.norm();
     const float &PcZ = Pc(2);
 
-    // Check positive depth
-    if(PcZ<0.0f)
+    if(PcZ <= 0.0f)
         return false;
 
-    // Project in image and check it is not outside
+    const float invz = 1.0f / PcZ;
     Eigen::Vector2f uv;
-    if(bRight) uv = mpCamera2->project(Pc);
-    else uv = mpCamera->project(Pc);
+    if(!bRight && mpCamera->GetType() == GeometricCamera::CAM_PINHOLE)
+        uv = Eigen::Vector2f(fx * Pc(0) * invz + cx, fy * Pc(1) * invz + cy);
+    else if(bRight)
+        uv = mpCamera2->project(Pc);
+    else
+        uv = mpCamera->project(Pc);
 
     if(uv(0)<mnMinX || uv(0)>mnMaxX)
         return false;
     if(uv(1)<mnMinY || uv(1)>mnMaxY)
         return false;
 
-    // Check distance is in the scale invariance region of the MapPoint
-    const float maxDistance = pMP->GetMaxDistanceInvariance();
-    const float minDistance = pMP->GetMinDistanceInvariance();
     const Eigen::Vector3f PO = P - twc;
     const float dist = PO.norm();
 
-    if(dist<minDistance || dist>maxDistance)
+    if(dist<pd.minDist || dist>pd.maxDist)
         return false;
 
-    // Check viewing angle
-    Eigen::Vector3f Pn = pMP->GetNormal();
-
-    const float viewCos = PO.dot(Pn) / dist;
+    const float viewCos = PO.dot(pd.normal) / dist;
 
     if(viewCos<viewingCosLimit)
         return false;
 
-    // Predict scale in the image
-    const int nPredictedLevel = pMP->PredictScale(dist,this);
+    const int nPredictedLevel = pMP->PredictScale(dist, this);
 
     if(bRight){
         pMP->mTrackProjXR = uv(0);

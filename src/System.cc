@@ -291,14 +291,14 @@ try
     }
 
     // Initialize WebViewer backend
-    bool webEnabled = true;
+    bool webEnabled = bUseViewer;
     int webPort = 8080;
     std::string webBindAddr = "0.0.0.0";
     std::string webStaticRoot = "./web_viewer/dist";
 
     cv::FileNode webNode = fsSettings["WebViewer.Enabled"];
     if(!webNode.empty()) {
-        webEnabled = static_cast<int>(webNode) != 0;
+        webEnabled = bUseViewer && (static_cast<int>(webNode) != 0);
     }
     webNode = fsSettings["WebViewer.Port"];
     if(!webNode.empty()) {

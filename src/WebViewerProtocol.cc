@@ -131,41 +131,26 @@ std::vector<uint8_t> WebViewerProtocol::EncodePointsChunk(uint64_t epoch, uint64
 }
 
 std::vector<uint8_t> WebViewerProtocol::EncodeImageJpeg(uint64_t epoch, uint64_t sequence, int64_t ts_ns, const cv::Mat& gray_img, int quality) {
-    if (gray_img.empty() || gray_img.cols <= 0 || gray_img.rows <= 0) {
-        return {};
+    cv::Mat resized;
+    if (gray_img.cols > 640) {
+        int target_w = 640;
+        int target_h = gray_img.rows * target_w / gray_img.cols;
+        cv::resize(gray_img, resized, cv::Size(target_w, target_h));
+    } else {
+        resized = gray_img;
     }
 
-    try {
-        cv::Mat resized;
-        if (gray_img.cols > 640) {
-            int target_w = 640;
-            int target_h = gray_img.rows * target_w / gray_img.cols;
-            if (target_h <= 0) target_h = 1;
-            cv::resize(gray_img, resized, cv::Size(target_w, target_h));
-        } else {
-            resized = gray_img;
-        }
+    std::vector<uchar> jpeg_bytes;
+    std::vector<int> params = {cv::IMWRITE_JPEG_QUALITY, quality};
+    cv::imencode(".jpg", resized, jpeg_bytes, params);
 
-        std::vector<uchar> jpeg_bytes;
-        std::vector<int> params = {cv::IMWRITE_JPEG_QUALITY, quality};
-        if (!cv::imencode(".jpg", resized, jpeg_bytes, params) || jpeg_bytes.empty()) {
-            return {};
-        }
+    uint32_t payload_size = static_cast<uint32_t>(jpeg_bytes.size());
+    auto buf = EncodeHeader(MSG_IMAGE_JPEG, payload_size, epoch, 0, sequence, ts_ns);
+    size_t offset = buf.size();
+    buf.resize(offset + payload_size);
+    std::memcpy(buf.data() + offset, jpeg_bytes.data(), jpeg_bytes.size());
 
-        uint32_t payload_size = static_cast<uint32_t>(jpeg_bytes.size());
-        auto buf = EncodeHeader(MSG_IMAGE_JPEG, payload_size, epoch, 0, sequence, ts_ns);
-        size_t offset = buf.size();
-        buf.resize(offset + payload_size);
-        std::memcpy(buf.data() + offset, jpeg_bytes.data(), jpeg_bytes.size());
-
-        return buf;
-    } catch (const std::exception& e) {
-        std::cerr << "[WebViewerProtocol] Exception encoding JPEG: " << e.what() << std::endl;
-        return {};
-    } catch (...) {
-        std::cerr << "[WebViewerProtocol] Unknown exception encoding JPEG" << std::endl;
-        return {};
-    }
+    return buf;
 }
 
 std::vector<uint8_t> WebViewerProtocol::EncodeFeatureOverlay(uint64_t epoch, uint64_t sequence, int64_t ts_ns, const std::vector<VisualizationFeature>& features) {

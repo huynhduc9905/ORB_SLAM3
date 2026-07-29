@@ -412,29 +412,7 @@ unsigned int Map::GetLowerKFID()
     return 0;
 }
 
-int Map::GetMapChangeIndex()
-{
-    unique_lock<mutex> lock(mMutexMap);
-    return mnMapChange;
-}
 
-void Map::IncreaseChangeIndex()
-{
-    unique_lock<mutex> lock(mMutexMap);
-    mnMapChange++;
-}
-
-int Map::GetLastMapChange()
-{
-    unique_lock<mutex> lock(mMutexMap);
-    return mnMapChangeNotified;
-}
-
-void Map::SetLastMapChange(int currentChangeId)
-{
-    unique_lock<mutex> lock(mMutexMap);
-    mnMapChangeNotified = currentChangeId;
-}
 
 void Map::PreSave(std::set<GeometricCamera*> &spCams)
 {
