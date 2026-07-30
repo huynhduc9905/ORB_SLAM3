@@ -786,6 +786,7 @@ namespace ORB_SLAM3
 
         const float W = 35;
 
+#pragma omp parallel for schedule(dynamic, 1)
         for (int level = 0; level < nlevels; ++level)
         {
             const int minBorderX = EDGE_THRESHOLD-3;
@@ -1050,6 +1051,7 @@ namespace ORB_SLAM3
         }
 
         // and compute orientations
+#pragma omp parallel for schedule(dynamic, 1)
         for (int level = 0; level < nlevels; ++level)
             computeOrientation(mvImagePyramid[level], allKeypoints[level], umax);
     }
@@ -1105,6 +1107,7 @@ namespace ORB_SLAM3
         };
         vector<LevelData> vLevelData(nlevels);
 
+#pragma omp parallel for schedule(dynamic, 1)
         for (int level = 0; level < nlevels; ++level)
         {
             vector<KeyPoint>& keypoints = allKeypoints[level];

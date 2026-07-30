@@ -35,7 +35,7 @@ def run_benchmark(dataset_path, output_json):
     return None
 
 def main():
-    datasets = ["dataset/circle_run", "dataset/full_run"]
+    datasets = ["dataset/full_run"]
     results = {}
     for ds in datasets:
         if os.path.exists(ds):

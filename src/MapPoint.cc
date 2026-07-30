@@ -192,8 +192,12 @@ void MapPoint::EraseObservation(KeyFrame* pKF)
 
             mObservations.erase(pKF);
 
-            if(mpRefKF==pKF)
-                mpRefKF=mObservations.begin()->first;
+            if(mpRefKF==pKF) {
+                if(!mObservations.empty())
+                    mpRefKF=mObservations.begin()->first;
+                else
+                    mpRefKF=nullptr;
+            }
 
             // If only 2 observations or less, discard point
             if(nObs<=2)

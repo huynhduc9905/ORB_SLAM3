@@ -26,6 +26,7 @@
 #include "G2oTypes.h"
 #include "Optimizer.h"
 #include "Pinhole.h"
+#include <omp.h>
 #include "KannalaBrandt8.h"
 #include "MLPnPsolver.h"
 #include "GeometricTools.h"

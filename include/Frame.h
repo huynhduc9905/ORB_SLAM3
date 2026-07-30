@@ -171,6 +171,9 @@ private:
     Eigen::Matrix<float,3,1> mOw;
     Eigen::Matrix<float,3,3> mRcw;
     Eigen::Matrix<float,3,1> mtcw;
+    Eigen::Matrix<float,3,3> mRcwRight;
+    Eigen::Matrix<float,3,1> mtcwRight;
+    Eigen::Matrix<float,3,1> mOwRight;
     bool mbHasPose;
 
     //Rcw_ not necessary as Sophus has a method for extracting the rotation matrix: Tcw_.rotationMatrix()

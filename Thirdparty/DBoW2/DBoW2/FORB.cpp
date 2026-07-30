@@ -1,3 +1,5 @@
+#include <immintrin.h>
+#include <cstdint>
 /**
  * File: FORB.cpp
  * Date: June 2012
@@ -78,26 +80,29 @@ void FORB::meanValue(const std::vector<FORB::pDescriptor> &descriptors,
 
 // --------------------------------------------------------------------------
   
-int FORB::distance(const FORB::TDescriptor &a,
-  const FORB::TDescriptor &b)
+int FORB::distance(const FORB::TDescriptor &a, const FORB::TDescriptor &b)
 {
-  // Bit set count operation from
-  // http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
+  const uint8_t *pa = a.ptr<uint8_t>();
+  const uint8_t *pb = b.ptr<uint8_t>();
 
-  const int *pa = a.ptr<int32_t>();
-  const int *pb = b.ptr<int32_t>();
-
-  int dist=0;
-
-  for(int i=0; i<8; i++, pa++, pb++)
-  {
-      unsigned  int v = *pa ^ *pb;
-      v = v - ((v >> 1) & 0x55555555);
-      v = (v & 0x33333333) + ((v >> 2) & 0x33333333);
-      dist += (((v + (v >> 4)) & 0xF0F0F0F) * 0x1010101) >> 24;
-  }
-
-  return dist;
+#if defined(__AVX2__)
+  __m256i va = _mm256_loadu_si256((const __m256i*)pa);
+  __m256i vb = _mm256_loadu_si256((const __m256i*)pb);
+  __m256i xor_res = _mm256_xor_si256(va, vb);
+  uint64_t r0 = _mm256_extract_epi64(xor_res, 0);
+  uint64_t r1 = _mm256_extract_epi64(xor_res, 1);
+  uint64_t r2 = _mm256_extract_epi64(xor_res, 2);
+  uint64_t r3 = _mm256_extract_epi64(xor_res, 3);
+  return __builtin_popcountll(r0) + __builtin_popcountll(r1) +
+         __builtin_popcountll(r2) + __builtin_popcountll(r3);
+#else
+  const uint64_t *pa64 = (const uint64_t*)pa;
+  const uint64_t *pb64 = (const uint64_t*)pb;
+  return __builtin_popcountll(pa64[0] ^ pb64[0]) + 
+         __builtin_popcountll(pa64[1] ^ pb64[1]) + 
+         __builtin_popcountll(pa64[2] ^ pb64[2]) + 
+         __builtin_popcountll(pa64[3] ^ pb64[3]);
+#endif
 }
 
 // --------------------------------------------------------------------------

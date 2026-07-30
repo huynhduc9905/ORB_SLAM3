@@ -342,6 +342,7 @@ void KeyFrame::EraseMapPointMatch(MapPoint* pMP)
 {
     tuple<size_t,size_t> indexes = pMP->GetIndexInKeyFrame(this);
     size_t leftIndex = get<0>(indexes), rightIndex = get<1>(indexes);
+    unique_lock<mutex> lock(mMutexFeatures);
     if(leftIndex != -1)
         mvpMapPoints[leftIndex]=static_cast<MapPoint*>(NULL);
     if(rightIndex != -1)
@@ -351,6 +352,7 @@ void KeyFrame::EraseMapPointMatch(MapPoint* pMP)
 
 void KeyFrame::ReplaceMapPointMatch(const int &idx, MapPoint* pMP)
 {
+    unique_lock<mutex> lock(mMutexFeatures);
     mvpMapPoints[idx]=pMP;
 }
 
@@ -384,7 +386,7 @@ int KeyFrame::TrackedMapPoints(const int &minObs)
             {
                 if(bCheckObs)
                 {
-                    if(mvpMapPoints[i]->Observations()>=minObs)
+                    if(pMP->Observations()>=minObs)
                         nPoints++;
                 }
                 else

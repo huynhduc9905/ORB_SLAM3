@@ -2580,7 +2580,7 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
             {
                 MapPoint* pMP = vpMPs[i];
 
-                if(pMP->isBad())
+                if(!pMP || pMP->isBad())
                     continue;
 
                 if(pMP->mnBAGlobalForKF==nLoopKF)
@@ -2593,7 +2593,7 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
                     // Update according to the correction of its reference keyframe
                     KeyFrame* pRefKF = pMP->GetReferenceKeyFrame();
 
-                    if(pRefKF->mnBAGlobalForKF!=nLoopKF)
+                    if(!pRefKF || pRefKF->mnBAGlobalForKF!=nLoopKF)
                         continue;
 
                     /*if(pRefKF->mTcwBefGBA.empty())

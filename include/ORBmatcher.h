@@ -24,6 +24,7 @@
 #include<vector>
 #include<opencv2/core/core.hpp>
 #include<opencv2/features2d/features2d.hpp>
+#include <immintrin.h>
 #include"sophus/sim3.hpp"
 
 #include"MapPoint.h"
@@ -40,27 +41,44 @@ namespace ORB_SLAM3
 
         ORBmatcher(float nnratio=0.6, bool checkOri=true);
 
-        // Computes the Hamming distance between two ORB descriptors
-        static inline int DescriptorDistance(const cv::Mat &a, const cv::Mat &b)
-        {
-            const uint64_t *pa = reinterpret_cast<const uint64_t*>(a.data);
-            const uint64_t *pb = reinterpret_cast<const uint64_t*>(b.data);
 
-            return __builtin_popcountll(pa[0] ^ pb[0]) +
-                   __builtin_popcountll(pa[1] ^ pb[1]) +
-                   __builtin_popcountll(pa[2] ^ pb[2]) +
-                   __builtin_popcountll(pa[3] ^ pb[3]);
-        }
-        
         static inline int DescriptorDistance(const uchar *pa, const uchar *pb)
         {
-            const uint64_t *a = reinterpret_cast<const uint64_t*>(pa);
-            const uint64_t *b = reinterpret_cast<const uint64_t*>(pb);
-
+            if (!pa || !pb) return 256;
+#if defined(__AVX2__)
+            __m256i a = _mm256_loadu_si256((const __m256i*)pa);
+            __m256i b = _mm256_loadu_si256((const __m256i*)pb);
+            __m256i xor_res = _mm256_xor_si256(a, b);
+            uint64_t r0 = _mm256_extract_epi64(xor_res, 0);
+            uint64_t r1 = _mm256_extract_epi64(xor_res, 1);
+            uint64_t r2 = _mm256_extract_epi64(xor_res, 2);
+            uint64_t r3 = _mm256_extract_epi64(xor_res, 3);
+            return __builtin_popcountll(r0) + __builtin_popcountll(r1) +
+                   __builtin_popcountll(r2) + __builtin_popcountll(r3);
+#else
+            uint64_t a[4], b[4];
+            __builtin_memcpy(a, pa, 32);
+            __builtin_memcpy(b, pb, 32);
             return __builtin_popcountll(a[0] ^ b[0]) +
                    __builtin_popcountll(a[1] ^ b[1]) +
                    __builtin_popcountll(a[2] ^ b[2]) +
                    __builtin_popcountll(a[3] ^ b[3]);
+#endif
+        }
+
+        static inline int DescriptorDistance(const cv::Mat &a, const uchar *pb)
+        {
+            return DescriptorDistance(a.ptr<uchar>(0), pb);
+        }
+
+        static inline int DescriptorDistance(const uchar *pa, const cv::Mat &b)
+        {
+            return DescriptorDistance(pa, b.ptr<uchar>(0));
+        }
+        
+        static inline int DescriptorDistance(const cv::Mat &a, const cv::Mat &b)
+        {
+            return DescriptorDistance(a.ptr<uchar>(0), b.ptr<uchar>(0));
         }
 
         // Search matches between Frame keypoints and projected MapPoints. Returns number of matches
