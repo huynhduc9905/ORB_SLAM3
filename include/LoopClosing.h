@@ -31,6 +31,7 @@
 #include <boost/algorithm/string.hpp>
 #include <thread>
 #include <mutex>
+#include <condition_variable>
 #include "Thirdparty/g2o/g2o/types/types_seven_dof_expmap.h"
 
 namespace ORB_SLAM3
@@ -76,7 +77,15 @@ public:
     bool isFinishedGBA(){
         unique_lock<std::mutex> lock(mMutexGBA);
         return mbFinishedGBA;
-    }   
+    }
+
+    /**
+     * Signal the running GBA worker to stop and wait for it to finish before
+     * returning. Safe to call when no GBA is running (no-op). Must be called
+     * before destroying any object that RunGlobalBundleAdjustment touches
+     * (LocalMapper, Atlas, KeyFrames) to prevent a use-after-free.
+     */
+    void StopAndJoinGlobalBundleAdjustment();
 
     void RequestFinish();
 
@@ -217,13 +226,20 @@ protected:
     bool mbFinishedGBA;
     bool mbStopGBA;
     std::mutex mMutexGBA;
+    std::condition_variable mCvGBA;  // notified when mbRunningGBA transitions to false
     std::thread* mpThreadGBA;
 
     // Fix scale in the stereo/RGB-D case
     bool mbFixScale;
 
 
-    bool mnFullBAIdx;
+    // Generation counter for global bundle adjustment runs. A worker compares
+    // the value it captured at start against the current value to detect that
+    // it was superseded and must discard its result. Must be an integer: as a
+    // bool it saturated at 1 after the first increment, so the check at
+    // RunGlobalBundleAdjustment could never fire again. Incrementing a bool is
+    // also forbidden in C++17.
+    int mnFullBAIdx;
 
 
 

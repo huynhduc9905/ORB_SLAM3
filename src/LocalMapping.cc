@@ -1395,6 +1395,9 @@ void LocalMapping::InitializeIMU(float priorG, float priorA, bool bFIBA)
             // Update according to the correction of its reference keyframe
             KeyFrame* pRefKF = pMP->GetReferenceKeyFrame();
 
+            if(!pRefKF || pRefKF->isBad())
+                continue;
+
             if(pRefKF->mnBAGlobalForKF!=GBAid)
                 continue;
 

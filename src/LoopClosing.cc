@@ -995,6 +995,10 @@ void LoopClosing::CorrectLoop()
         {
             mpThreadGBA->detach();
             delete mpThreadGBA;
+            // Without this, a later loop-closure event re-checking mpThreadGBA
+            // sees the same stale (freed) pointer and double-detaches/deletes
+            // it, corrupting the heap.
+            mpThreadGBA = nullptr;
         }
         cout << "  Done!!" << endl;
     }
@@ -1246,6 +1250,7 @@ void LoopClosing::MergeLocal()
         {
             mpThreadGBA->detach();
             delete mpThreadGBA;
+            mpThreadGBA = nullptr;
         }
         bRelaunchBA = true;
     }
@@ -1819,6 +1824,7 @@ void LoopClosing::MergeLocal2()
         {
             mpThreadGBA->detach();
             delete mpThreadGBA;
+            mpThreadGBA = nullptr;
         }
         bRelaunchBA = true;
     }
@@ -2476,6 +2482,14 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
                     // Update according to the correction of its reference keyframe
                     KeyFrame* pRefKF = pMP->GetReferenceKeyFrame();
 
+                    // mpRefKF is null for MapPoints constructed from a Frame
+                    // (e.g. during monocular initialization) rather than a
+                    // KeyFrame, and can remain null if it was never
+                    // subsequently assigned. Without this guard,
+                    // pRefKF->mnBAGlobalForKF below is a null dereference.
+                    if(!pRefKF || pRefKF->isBad())
+                        continue;
+
                     if(pRefKF->mnBAGlobalForKF!=nLoopKF)
                         continue;
 
@@ -2514,7 +2528,31 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
 
         mbFinishedGBA = true;
         mbRunningGBA = false;
+        // Notify StopAndJoinGlobalBundleAdjustment that the worker has exited
+        // so System::Cleanup can safely proceed to tear down objects we use.
+        mCvGBA.notify_all();
     }
+}
+
+void LoopClosing::StopAndJoinGlobalBundleAdjustment()
+{
+    {
+        unique_lock<mutex> lock(mMutexGBA);
+        if(!mbRunningGBA)
+            return;
+        // Ask the worker to abort early so we don't wait a full GBA iteration.
+        mbStopGBA = true;
+    }
+
+    // Wait for RunGlobalBundleAdjustment to set mbRunningGBA = false.
+    // The GBA worker calls mCvGBA.notify_all() just before returning, so
+    // this wait is bounded by the time it takes to finish one optimizer step.
+    {
+        unique_lock<mutex> lock(mMutexGBA);
+        mCvGBA.wait(lock, [this]{ return !mbRunningGBA; });
+    }
+
+    // The detached std::thread object is no longer in use; nothing to join.
 }
 
 void LoopClosing::RequestFinish()

@@ -465,6 +465,12 @@ void MapPoint::UpdateNormalAndDepth()
         }
     }
 
+    // Guard against a ref KF that was SetBadFlag()'d and partially torn down
+    // between the lock scope above and this point. Its mutex may already be
+    // destroyed, making GetCameraCenter() (which locks mMutexPose) unsafe.
+    if(!pRefKF || pRefKF->isBad())
+        return;
+
     Eigen::Vector3f PC = Pos - pRefKF->GetCameraCenter();
     const float dist = PC.norm();
 

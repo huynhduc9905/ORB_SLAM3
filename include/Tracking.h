@@ -223,6 +223,13 @@ protected:
     bool NeedNewKeyFrame();
     void CreateNewKeyFrame();
 
+    // Publish frame, image and map state to the web visualizer. No-op when no
+    // visualization source exists or no client is subscribed.
+    void PublishVisualizationState();
+
+    // Publish lightweight pipeline state for inclusion in crash reports.
+    void PublishCrashContext();
+
     // Perform preintegration from last frame
     void PreintegrateIMU();
 

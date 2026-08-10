@@ -155,9 +155,23 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
                 continue;
             if(optimizer.vertex(id) == NULL || optimizer.vertex(pKF->mnId) == NULL)
                 continue;
+
+            // Re-check isBad under the KF's own lock: the KF may have been
+            // culled by LocalMapping between the vertex-building pass and now.
+            // A culled KF still has a vertex in the optimizer (it passed the
+            // earlier check) but its mvKeysUn / mvuRight may be in a partially
+            // torn-down state, causing a null-vertex dereference in addEdge.
+            if(pKF->isBad())
+                continue;
+
             nEdges++;
 
             const int leftIndex = get<0>(mit->second);
+
+            // Bounds-check against the current key-vector size: the observation
+            // index was captured under a different lock epoch and could be stale.
+            if(leftIndex < 0 || leftIndex >= (int)pKF->mvKeysUn.size())
+                continue;
 
             if(leftIndex != -1 && pKF->mvuRight[get<0>(mit->second)]<0)
             {
@@ -1299,7 +1313,23 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
 
             if(!pKFi->isBad() && pKFi->GetMap() == pCurrentMap)
             {
+                // pKFi comes from pMP->GetObservations() and is not guaranteed
+                // to have a vertex in this optimizer: it is only added above if
+                // it ended up in lLocalKeyFrames or lFixedCameras, which is
+                // possible to miss when mnBALocalForKF/mnBAFixedForKF still
+                // carries a stale marker from a previous LBA call on this map.
+                // Without this guard, setVertex() stores a null vertex pointer
+                // and g2o::HyperGraph::addEdge segfaults dereferencing it.
+                if(optimizer.vertex(id) == NULL || optimizer.vertex(pKFi->mnId) == NULL)
+                    continue;
+
                 const int leftIndex = get<0>(mit->second);
+
+                // Bounds-check: the observation index was captured under a
+                // different lock epoch and could be stale relative to pKFi's
+                // current key-vector size.
+                if(leftIndex < -1 || leftIndex >= (int)pKFi->mvKeysUn.size())
+                    continue;
 
                 // Monocular observation
                 if(leftIndex != -1 && pKFi->mvuRight[get<0>(mit->second)]<0)
@@ -1591,6 +1621,13 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
             const g2o::Sim3 Sjw = vScw[nIDj];
             const g2o::Sim3 Sji = Sjw * Swi;
 
+            // Both KFs pass through this map's LoopConnections snapshot, but a
+            // concurrent culling event between the vertex pass above and here
+            // can leave either with no vertex in the optimizer. addEdge then
+            // dereferences a null vertex pointer.
+            if(optimizer.vertex(nIDi) == NULL || optimizer.vertex(nIDj) == NULL)
+                continue;
+
             g2o::EdgeSim3* e = new g2o::EdgeSim3();
             e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(nIDj)));
             e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(nIDi)));
@@ -1638,12 +1675,15 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
 
             g2o::Sim3 Sji = Sjw * Swi;
 
-            g2o::EdgeSim3* e = new g2o::EdgeSim3();
-            e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(nIDj)));
-            e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(nIDi)));
-            e->setMeasurement(Sji);
-            e->information() = matLambda;
-            optimizer.addEdge(e);
+            if(optimizer.vertex(nIDi) != NULL && optimizer.vertex(nIDj) != NULL)
+            {
+                g2o::EdgeSim3* e = new g2o::EdgeSim3();
+                e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(nIDj)));
+                e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(nIDi)));
+                e->setMeasurement(Sji);
+                e->information() = matLambda;
+                optimizer.addEdge(e);
+            }
         }
 
         // Loop edges
@@ -1663,6 +1703,8 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
                     Slw = vScw[pLKF->mnId];
 
                 g2o::Sim3 Sli = Slw * Swi;
+                if(optimizer.vertex(nIDi) == NULL || optimizer.vertex(pLKF->mnId) == NULL)
+                    continue;
                 g2o::EdgeSim3* el = new g2o::EdgeSim3();
                 el->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pLKF->mnId)));
                 el->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(nIDi)));
@@ -1682,6 +1724,14 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
                 if(!pKFn->isBad() && pKFn->mnId<pKF->mnId)
                 {
                     if(sInsertedEdges.count(make_pair(min(pKF->mnId,pKFn->mnId),max(pKF->mnId,pKFn->mnId))))
+                        continue;
+
+                    // pKFn is not bad, but may still have been excluded from
+                    // the vertex pass earlier (e.g. it belonged to a
+                    // different map at that point) or gone bad concurrently
+                    // since. Guard against a null vertex before building the
+                    // edge, matching the pattern above.
+                    if(optimizer.vertex(nIDi) == NULL || optimizer.vertex(pKFn->mnId) == NULL)
                         continue;
 
                     g2o::Sim3 Snw;
@@ -1716,12 +1766,15 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
                 Spw = vScw[pKF->mPrevKF->mnId];
 
             g2o::Sim3 Spi = Spw * Swi;
-            g2o::EdgeSim3* ep = new g2o::EdgeSim3();
-            ep->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKF->mPrevKF->mnId)));
-            ep->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(nIDi)));
-            ep->setMeasurement(Spi);
-            ep->information() = matLambda;
-            optimizer.addEdge(ep);
+            if(optimizer.vertex(nIDi) != NULL && optimizer.vertex(pKF->mPrevKF->mnId) != NULL)
+            {
+                g2o::EdgeSim3* ep = new g2o::EdgeSim3();
+                ep->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(pKF->mPrevKF->mnId)));
+                ep->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(nIDi)));
+                ep->setMeasurement(Spi);
+                ep->information() = matLambda;
+                optimizer.addEdge(ep);
+            }
         }
     }
 
@@ -1764,6 +1817,11 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
         else
         {
             KeyFrame* pRefKF = pMP->GetReferenceKeyFrame();
+            // mpRefKF is null for MapPoints constructed directly from a Frame
+            // rather than a KeyFrame; dereferencing it here was an unguarded
+            // null-pointer crash.
+            if(!pRefKF || pRefKF->isBad())
+                continue;
             nIDr = pRefKF->mnId;
         }
 
@@ -2082,16 +2140,18 @@ void Optimizer::OptimizeEssentialGraph(KeyFrame* pCurKF, vector<KeyFrame*> &vpFi
             continue;
 
         KeyFrame* pRefKF = pMPi->GetReferenceKeyFrame();
-        while(pRefKF->isBad())
+        // The null check must come before the isBad() dereference, not after:
+        // isBad() on a null pRefKF crashes before this loop's own guard runs.
+        while(pRefKF && pRefKF->isBad())
         {
-            if(!pRefKF)
-            {
-                Verbose::PrintMess("MP " + to_string(pMPi->mnId) + " without a valid reference KF", Verbose::VERBOSITY_DEBUG);
-                break;
-            }
-
             pMPi->EraseObservation(pRefKF);
             pRefKF = pMPi->GetReferenceKeyFrame();
+        }
+
+        if(!pRefKF)
+        {
+            Verbose::PrintMess("MP " + to_string(pMPi->mnId) + " without a valid reference KF", Verbose::VERBOSITY_DEBUG);
+            continue;
         }
 
         if(vpBadPose[pRefKF->mnId])
@@ -5573,6 +5633,8 @@ void Optimizer::OptimizeEssentialGraph4DoF(Map* pMap, KeyFrame* pLoopKF, KeyFram
         int nIDr;
 
         KeyFrame* pRefKF = pMP->GetReferenceKeyFrame();
+        if(!pRefKF || pRefKF->isBad())
+            continue;
         nIDr = pRefKF->mnId;
 
         g2o::Sim3 Srw = vScw[nIDr];
