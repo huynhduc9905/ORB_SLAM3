@@ -82,6 +82,11 @@ struct VisualizationMapEvent {
     std::uint64_t geometry_revision{0};
     std::uint64_t graph_revision{0};
     VisualizationEventType type;
+    // When true, `points` is the complete, authoritative set of live map
+    // points (not an incremental delta). Consumers must replace their mirror
+    // wholesale so that points which have since been culled or fused (e.g. by
+    // loop-closure map fusion) are dropped rather than lingering as ghosts.
+    bool full_snapshot{false};
     std::vector<VisualizationMapPoint> points;
     std::vector<VisualizationKeyframe> keyframes;
 };

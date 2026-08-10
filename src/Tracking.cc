@@ -2415,6 +2415,11 @@ void Tracking::PublishVisualizationState()
         VisualizationMapEvent map_ev;
         map_ev.epoch = frame_snap.epoch;
         map_ev.type = VisualizationEventType::POINTS_UPDATED;
+        // This carries the complete set of live (non-bad) map points for the
+        // current map, so mark it authoritative: the backend then drops points
+        // that have been culled/fused (e.g. by loop closure) instead of keeping
+        // stale ghost copies that would make one object appear as two.
+        map_ev.full_snapshot = true;
         map_ev.points.reserve(vpMPs.size());
 
         for (MapPoint* pMP : vpMPs) {

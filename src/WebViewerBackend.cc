@@ -183,6 +183,31 @@ void WebViewerBackend::Stop() {
     }
 }
 
+void WebViewerBackend::ReconcileMirror(std::unordered_map<std::uint64_t, MirrorMapPoint>& mirror,
+                                       const VisualizationMapEvent& ev) {
+    switch (ev.type) {
+        case VisualizationEventType::POINTS_ADDED:
+        case VisualizationEventType::POINTS_UPDATED:
+            // A full snapshot is authoritative: rebuild from scratch so points
+            // culled or fused since the last snapshot (e.g. by loop-closure map
+            // fusion) are dropped instead of lingering as ghost duplicates.
+            if (ev.full_snapshot) {
+                mirror.clear();
+            }
+            for (const auto& pt : ev.points) {
+                mirror[pt.id] = MirrorMapPoint{pt.id, pt.world_position, pt.reference};
+            }
+            break;
+        case VisualizationEventType::POINTS_REMOVED:
+            for (const auto& pt : ev.points) {
+                mirror.erase(pt.id);
+            }
+            break;
+        default:
+            break;
+    }
+}
+
 void WebViewerBackend::MirrorWorkerLoop() {
     while (mRunning) {
         std::this_thread::sleep_for(std::chrono::milliseconds(33)); // ~30 Hz loop
@@ -217,17 +242,10 @@ void WebViewerBackend::MirrorWorkerLoop() {
 
             // 3. Map events
             auto events = mpSource->PopPendingMapEvents();
-            for (const auto& ev : events) {
-                if (ev.type == VisualizationEventType::POINTS_ADDED || ev.type == VisualizationEventType::POINTS_UPDATED) {
-                    std::lock_guard<std::mutex> lock(mMirrorMutex);
-                    for (const auto& pt : ev.points) {
-                        mMirrorPoints[pt.id] = MirrorMapPoint{pt.id, pt.world_position, pt.reference};
-                    }
-                } else if (ev.type == VisualizationEventType::POINTS_REMOVED) {
-                    std::lock_guard<std::mutex> lock(mMirrorMutex);
-                    for (const auto& pt : ev.points) {
-                        mMirrorPoints.erase(pt.id);
-                    }
+            {
+                std::lock_guard<std::mutex> lock(mMirrorMutex);
+                for (const auto& ev : events) {
+                    ReconcileMirror(mMirrorPoints, ev);
                 }
             }
         } catch (const std::exception& e) {

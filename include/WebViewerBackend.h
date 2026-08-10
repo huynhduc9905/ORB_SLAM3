@@ -44,12 +44,23 @@ private:
 
     std::unique_ptr<WebViewerBackendImpl> mImpl;
 
-    // Backend Map Mirror
+public:
+    // Backend map-mirror point. Public so the reconciliation policy below can
+    // be unit-tested without networking/threads.
     struct MirrorMapPoint {
         std::uint64_t id;
         Eigen::Vector3f pos;
         bool reference;
     };
+
+    // Apply a single map event to a point mirror. Static + public so the
+    // reconciliation policy can be unit-tested directly. A full-snapshot
+    // POINTS_ADDED/POINTS_UPDATED event replaces the mirror wholesale;
+    // otherwise points are merged/updated by id, and POINTS_REMOVED erases.
+    static void ReconcileMirror(std::unordered_map<std::uint64_t, MirrorMapPoint>& mirror,
+                                const VisualizationMapEvent& ev);
+
+private:
     std::mutex mMirrorMutex;
     std::unordered_map<std::uint64_t, MirrorMapPoint> mMirrorPoints;
 };
