@@ -176,6 +176,13 @@ int main(int argc, char **argv)
         }
     }
 
+    // The sequence is complete. The runner now intentionally idles so the web
+    // viewer can keep serving the final map, and frame_id stops advancing.
+    // Stop the watchdog first, otherwise it would (correctly, by its own rule)
+    // fire SIGABRT ~90s after the last frame -- a false positive on this
+    // deliberate idle rather than a real hang.
+    ORB_SLAM3::CrashMonitor::StopWatchdog();
+
     cout << "Sequence finished processing. WebViewer server remains active for visualization..." << endl;
     cout << "Press Ctrl+C or kill process to terminate." << endl;
     while (true) {

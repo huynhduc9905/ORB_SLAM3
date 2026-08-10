@@ -84,6 +84,12 @@ int main(int argc, char **argv)
         std::this_thread::sleep_for(std::chrono::milliseconds(33));
     }
 
+    // Sequence complete. Stop the watchdog before Shutdown(): joining the
+    // detached global-bundle-adjustment thread during teardown is a bounded,
+    // expected wait during which frame_id no longer advances, and would
+    // otherwise trip the watchdog as a false positive.
+    ORB_SLAM3::CrashMonitor::StopWatchdog();
+
     // Keep server running for inspection if desired
     cout << "Dataset execution complete. Shutting down SLAM." << endl;
     SLAM.Shutdown();
