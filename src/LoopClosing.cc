@@ -2320,10 +2320,24 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
     {
         unique_lock<mutex> lock(mMutexGBA);
         if(idx!=mnFullBAIdx)
+            // A newer GBA superseded this one. That newer (owning) thread is
+            // responsible for clearing mbRunningGBA / notifying, so we must NOT
+            // touch the flag here or we would falsely signal completion while
+            // the newer GBA is still running.
             return;
 
         if(!bImuInit && pActiveMap->isImuInitialized())
+        {
+            // Terminal give-up for the owning thread (map became IMU-initialized,
+            // so this non-inertial GBA result is not applicable). Nobody else
+            // will clear the flag, so clear it here -- otherwise
+            // StopAndJoinGlobalBundleAdjustment() would wait on !mbRunningGBA
+            // forever and deadlock shutdown.
+            mbFinishedGBA = true;
+            mbRunningGBA = false;
+            mCvGBA.notify_all();
             return;
+        }
 
         if(!mbStopGBA)
         {

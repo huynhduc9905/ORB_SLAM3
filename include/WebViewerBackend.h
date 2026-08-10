@@ -15,7 +15,10 @@ namespace ORB_SLAM3 {
 
 struct WebViewerConfig {
     bool enabled{true};
-    std::string bind_address{"0.0.0.0"};
+    // Default to loopback: the stream is unauthenticated, so binding wider must
+    // be an explicit choice (System applies the same default; this guards direct
+    // construction that bypasses System).
+    std::string bind_address{"127.0.0.1"};
     int port{8080};
     std::string static_root{"./web_viewer/dist"};
     int max_clients{4};

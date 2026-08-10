@@ -220,9 +220,15 @@ std::string SanitizeLabel(const std::string &label)
 
 long long NowNanoseconds()
 {
-    return std::chrono::duration_cast<std::chrono::nanoseconds>(
-               std::chrono::system_clock::now().time_since_epoch())
-        .count();
+    // Must stay async-signal-safe: this is reached from the fatal-signal handler
+    // via WriteReportToFd. POSIX guarantees clock_gettime() is async-signal-safe;
+    // std::chrono::system_clock::now() is not (implementation may take non-trivial
+    // code paths). Use the raw syscall wrapper directly.
+    struct timespec ts;
+    if (clock_gettime(CLOCK_REALTIME, &ts) != 0)
+        return 0;
+    return static_cast<long long>(ts.tv_sec) * 1000000000LL +
+           static_cast<long long>(ts.tv_nsec);
 }
 
 /**

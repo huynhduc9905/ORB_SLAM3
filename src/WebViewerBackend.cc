@@ -2,6 +2,9 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <algorithm>
+#include <cstring>
+#include <filesystem>
 #include <boost/asio.hpp>
 #include <boost/beast.hpp>
 #include <boost/beast/websocket.hpp>
@@ -13,6 +16,57 @@ namespace net = boost::asio;
 using tcp = net::ip::tcp;
 
 namespace ORB_SLAM3 {
+
+namespace {
+
+// Resolve an HTTP request target to a filesystem path that is provably inside
+// static_root, or return empty if the request tries to escape (path traversal).
+// The request target is attacker-controlled, so we strip any query/fragment,
+// reject NUL bytes, then canonicalize and require the result to stay under the
+// canonical static root. Without this, "GET /../../etc/passwd" would read
+// arbitrary files the process can access -- especially dangerous now that the
+// server can be bound to a non-loopback (e.g. tailnet) address.
+std::string ResolveStaticPath(const std::string& static_root, std::string target) {
+    if (target.find('\0') != std::string::npos) return {};
+    // Drop query string / fragment.
+    const auto qpos = target.find_first_of("?#");
+    if (qpos != std::string::npos) target = target.substr(0, qpos);
+    if (target.empty() || target == "/") target = "/index.html";
+
+    namespace fs = std::filesystem;
+    std::error_code ec;
+    const fs::path root = fs::weakly_canonical(fs::path(static_root), ec);
+    if (ec) return {};
+    const fs::path candidate = fs::weakly_canonical(root / fs::path("." + target), ec);
+    if (ec) return {};
+
+    // Require candidate to be root itself or strictly under root.
+    auto rit = root.begin();
+    auto cit = candidate.begin();
+    for (; rit != root.end(); ++rit, ++cit) {
+        if (cit == candidate.end() || *cit != *rit) return {};
+    }
+    return candidate.string();
+}
+
+std::string MimeTypeFor(const std::string& path) {
+    auto ends_with = [&](const char* ext) {
+        const size_t n = std::strlen(ext);
+        return path.size() >= n && path.compare(path.size() - n, n, ext) == 0;
+    };
+    if (ends_with(".html")) return "text/html";
+    if (ends_with(".js"))   return "application/javascript";
+    if (ends_with(".css"))  return "text/css";
+    if (ends_with(".json")) return "application/json";
+    if (ends_with(".svg"))  return "image/svg+xml";
+    if (ends_with(".png"))  return "image/png";
+    if (ends_with(".jpg") || ends_with(".jpeg")) return "image/jpeg";
+    if (ends_with(".woff2")) return "font/woff2";
+    if (ends_with(".wasm")) return "application/wasm";
+    return "application/octet-stream";
+}
+
+} // namespace
 
 class WebViewerBackendImpl {
 public:
@@ -45,22 +99,12 @@ public:
 
     void BroadcastRealtime(const std::vector<uint8_t>& msg) {
         std::lock_guard<std::mutex> lock(mSocketsMutex);
-        for (auto& ws : mRealtimeSockets) {
-            try {
-                ws->binary(true);
-                ws->write(net::buffer(msg));
-            } catch (...) {}
-        }
+        BroadcastAndPrune(mRealtimeSockets, msg);
     }
 
     void BroadcastBulk(const std::vector<uint8_t>& msg) {
         std::lock_guard<std::mutex> lock(mSocketsMutex);
-        for (auto& ws : mBulkSockets) {
-            try {
-                ws->binary(true);
-                ws->write(net::buffer(msg));
-            } catch (...) {}
-        }
+        BroadcastAndPrune(mBulkSockets, msg);
     }
 
     bool HasClients() {
@@ -69,6 +113,26 @@ public:
     }
 
 private:
+    // Broadcast to every socket; drop any that throw (client disconnected) so
+    // the vectors don't grow without bound over a long-running deployment.
+    // Caller must hold mSocketsMutex.
+    static void BroadcastAndPrune(
+            std::vector<std::shared_ptr<websocket::stream<tcp::socket>>>& sockets,
+            const std::vector<uint8_t>& msg) {
+        sockets.erase(
+            std::remove_if(sockets.begin(), sockets.end(),
+                [&](std::shared_ptr<websocket::stream<tcp::socket>>& ws) {
+                    try {
+                        ws->binary(true);
+                        ws->write(net::buffer(msg));
+                        return false; // keep
+                    } catch (...) {
+                        return true;  // dead -> prune
+                    }
+                }),
+            sockets.end());
+    }
+
     void RunServer() {
         while (mRunning) {
             try {
@@ -125,15 +189,13 @@ private:
                 res.prepare_payload();
                 http::write(socket, res);
             } else {
-                // Static file serving
-                std::string path = mConfig.static_root + (target == "/" ? "/index.html" : target);
-                std::ifstream ifs(path, std::ios::binary);
-                if (ifs) {
+                // Static file serving (path-traversal safe).
+                std::string path = ResolveStaticPath(mConfig.static_root, target);
+                std::ifstream ifs(path.empty() ? std::string() : path, std::ios::binary);
+                if (!path.empty() && ifs) {
                     std::string body((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
                     http::response<http::string_body> res{http::status::ok, req.version()};
-                    if (path.find(".html") != std::string::npos) res.set(http::field::content_type, "text/html");
-                    else if (path.find(".js") != std::string::npos) res.set(http::field::content_type, "application/javascript");
-                    else if (path.find(".css") != std::string::npos) res.set(http::field::content_type, "text/css");
+                    res.set(http::field::content_type, MimeTypeFor(path));
                     res.body() = body;
                     res.prepare_payload();
                     http::write(socket, res);
