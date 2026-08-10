@@ -12,6 +12,10 @@ export class ThreeRenderer {
   pointGeometry: THREE.BufferGeometry;
   trailLine: THREE.Line;
   trailPositions: number[] = [];
+  // Max trail vertices kept (3 numbers per pose). Large enough to show the
+  // full path for any realistic run (1,000,000 poses ~= 9h at 30 FPS) while
+  // still bounding memory for an indefinitely-running live session.
+  trailMaxPositions: number = 3_000_000;
 
   followCamera: boolean = true;
 
@@ -76,9 +80,10 @@ export class ThreeRenderer {
       this.controls.update();
     }
 
-    // Add to trail
+    // Add to trail. Keep the full path; only trim if it grows past the
+    // (very large) safety cap so a long-running live session can't leak.
     this.trailPositions.push(tx, ty, tz);
-    if (this.trailPositions.length > 6000) this.trailPositions.splice(0, 3);
+    if (this.trailPositions.length > this.trailMaxPositions) this.trailPositions.splice(0, 3);
     this.trailLine.geometry.setAttribute('position', new THREE.Float32BufferAttribute(this.trailPositions, 3));
   }
 
