@@ -18,7 +18,9 @@
 
 
 #include "Viewer.h"
+#ifdef HAVE_PANGOLIN
 #include <pangolin/pangolin.h>
+#endif
 
 #include <mutex>
 
@@ -163,6 +165,7 @@ void Viewer::Run()
 {
     mbFinished = false;
     mbStopped = false;
+#ifdef HAVE_PANGOLIN
 
     pangolin::CreateWindowAndBind("ORB-SLAM3: Map Viewer",1024,768);
 
@@ -379,6 +382,12 @@ void Viewer::Run()
         if(CheckFinish())
             break;
     }
+#else
+    while(!CheckFinish())
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+#endif
 
     SetFinish();
 }

@@ -1,0 +1,255 @@
+#include "WebViewerBackend.h"
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <boost/asio.hpp>
+#include <boost/beast.hpp>
+#include <boost/beast/websocket.hpp>
+
+namespace beast = boost::beast;
+namespace http = beast::http;
+namespace websocket = beast::websocket;
+namespace net = boost::asio;
+using tcp = net::ip::tcp;
+
+namespace ORB_SLAM3 {
+
+class WebViewerBackendImpl {
+public:
+    WebViewerBackendImpl(std::shared_ptr<VisualizationSource> source, const WebViewerConfig& config)
+        : mpSource(source), mConfig(config), mAcceptor(mIoc) {}
+
+    void Start() {
+        try {
+            tcp::endpoint endpoint(net::ip::make_address(mConfig.bind_address), mConfig.port);
+            mAcceptor.open(endpoint.protocol());
+            mAcceptor.set_option(net::socket_base::reuse_address(true));
+            mAcceptor.bind(endpoint);
+            mAcceptor.listen();
+
+            mRunning = true;
+            mServerThread = std::thread([this]() { RunServer(); });
+            std::cout << "[WebViewer] Server listening on " << mConfig.bind_address << ":" << mConfig.port << std::endl;
+        } catch (const std::exception& e) {
+            std::cerr << "[WebViewer] Failed to start server: " << e.what() << std::endl;
+        }
+    }
+
+    void Stop() {
+        mRunning = false;
+        mIoc.stop();
+        if (mServerThread.joinable()) {
+            mServerThread.join();
+        }
+    }
+
+    void BroadcastRealtime(const std::vector<uint8_t>& msg) {
+        std::lock_guard<std::mutex> lock(mSocketsMutex);
+        for (auto& ws : mRealtimeSockets) {
+            try {
+                ws->binary(true);
+                ws->write(net::buffer(msg));
+            } catch (...) {}
+        }
+    }
+
+    void BroadcastBulk(const std::vector<uint8_t>& msg) {
+        std::lock_guard<std::mutex> lock(mSocketsMutex);
+        for (auto& ws : mBulkSockets) {
+            try {
+                ws->binary(true);
+                ws->write(net::buffer(msg));
+            } catch (...) {}
+        }
+    }
+
+    bool HasClients() {
+        std::lock_guard<std::mutex> lock(mSocketsMutex);
+        return !mRealtimeSockets.empty() || !mBulkSockets.empty();
+    }
+
+private:
+    void RunServer() {
+        while (mRunning) {
+            try {
+                tcp::socket socket(mIoc);
+                boost::system::error_code ec;
+                mAcceptor.accept(socket, ec);
+                if (ec) break;
+
+                std::thread([this, s = std::move(socket)]() mutable { HandleConnection(std::move(s)); }).detach();
+            } catch (...) {
+                break;
+            }
+        }
+    }
+
+    void HandleConnection(tcp::socket socket) {
+        beast::flat_buffer buffer;
+        http::request<http::string_body> req;
+        boost::system::error_code ec;
+        http::read(socket, buffer, req, ec);
+        if (ec) return;
+
+        if (websocket::is_upgrade(req)) {
+            std::string target(req.target());
+            auto ws = std::make_shared<websocket::stream<tcp::socket>>(std::move(socket));
+            ws->accept(req, ec);
+            if (ec) return;
+
+            std::lock_guard<std::mutex> lock(mSocketsMutex);
+            if (target == "/ws/realtime") {
+                mRealtimeSockets.push_back(ws);
+                std::cout << "[WebViewer] Realtime client connected." << std::endl;
+                // Send hello
+                auto hello = WebViewerProtocol::EncodeHeader(MSG_SERVER_HELLO, 0, mpSource->GetCurrentEpoch(), 0, 0, 0);
+                ws->binary(true);
+                ws->write(net::buffer(hello));
+            } else if (target == "/ws/bulk") {
+                mBulkSockets.push_back(ws);
+                std::cout << "[WebViewer] Bulk client connected." << std::endl;
+            }
+        } else {
+            // Serve HTTP
+            std::string target(req.target());
+            if (target == "/healthz") {
+                http::response<http::string_body> res{http::status::ok, req.version()};
+                res.set(http::field::content_type, "application/json");
+                res.body() = "{\"status\":\"ok\",\"clients\":0}";
+                res.prepare_payload();
+                http::write(socket, res);
+            } else if (target == "/config") {
+                http::response<http::string_body> res{http::status::ok, req.version()};
+                res.set(http::field::content_type, "application/json");
+                res.body() = "{\"enabled\":true,\"port\":" + std::to_string(mConfig.port) + "}";
+                res.prepare_payload();
+                http::write(socket, res);
+            } else {
+                // Static file serving
+                std::string path = mConfig.static_root + (target == "/" ? "/index.html" : target);
+                std::ifstream ifs(path, std::ios::binary);
+                if (ifs) {
+                    std::string body((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+                    http::response<http::string_body> res{http::status::ok, req.version()};
+                    if (path.find(".html") != std::string::npos) res.set(http::field::content_type, "text/html");
+                    else if (path.find(".js") != std::string::npos) res.set(http::field::content_type, "application/javascript");
+                    else if (path.find(".css") != std::string::npos) res.set(http::field::content_type, "text/css");
+                    res.body() = body;
+                    res.prepare_payload();
+                    http::write(socket, res);
+                } else {
+                    http::response<http::string_body> res{http::status::not_found, req.version()};
+                    res.body() = "404 Not Found";
+                    res.prepare_payload();
+                    http::write(socket, res);
+                }
+            }
+        }
+    }
+
+    std::shared_ptr<VisualizationSource> mpSource;
+    WebViewerConfig mConfig;
+    net::io_context mIoc;
+    tcp::acceptor mAcceptor;
+    std::atomic<bool> mRunning{false};
+    std::thread mServerThread;
+
+    std::mutex mSocketsMutex;
+    std::vector<std::shared_ptr<websocket::stream<tcp::socket>>> mRealtimeSockets;
+    std::vector<std::shared_ptr<websocket::stream<tcp::socket>>> mBulkSockets;
+};
+
+WebViewerBackend::WebViewerBackend(std::shared_ptr<VisualizationSource> source, const WebViewerConfig& config)
+    : mpSource(source), mConfig(config) {
+    mImpl = std::make_unique<WebViewerBackendImpl>(mpSource, mConfig);
+}
+
+WebViewerBackend::~WebViewerBackend() {
+    Stop();
+}
+
+bool WebViewerBackend::Start() {
+    if (mRunning.exchange(true)) return true;
+    mImpl->Start();
+    mMirrorThread = std::thread([this]() { MirrorWorkerLoop(); });
+    return true;
+}
+
+void WebViewerBackend::Stop() {
+    if (!mRunning.exchange(false)) return;
+    mImpl->Stop();
+    if (mMirrorThread.joinable()) {
+        mMirrorThread.join();
+    }
+}
+
+void WebViewerBackend::MirrorWorkerLoop() {
+    while (mRunning) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(33)); // ~30 Hz loop
+
+        if (mpSource) {
+            mpSource->SetHasSubscribers(mImpl->HasClients());
+        }
+
+        try {
+            // 1. Frame state
+            auto frame = mpSource->GetLatestFrameState();
+            if (frame) {
+                auto frame_buf = WebViewerProtocol::EncodeFrameState(*frame);
+                mImpl->BroadcastRealtime(frame_buf);
+            }
+
+            // 2. Image state
+            auto image = mpSource->GetLatestImageState();
+            if (image && !image->immutable_grayscale_image.empty()) {
+                auto img_buf = WebViewerProtocol::EncodeImageJpeg(image->epoch, image->frame_sequence, image->capture_timestamp_ns, image->immutable_grayscale_image, mConfig.image_jpeg_quality);
+                if (!img_buf.empty()) {
+                    mImpl->BroadcastBulk(img_buf);
+                }
+
+                if (!image->features.empty()) {
+                    auto feat_buf = WebViewerProtocol::EncodeFeatureOverlay(image->epoch, image->frame_sequence, image->capture_timestamp_ns, image->features);
+                    if (!feat_buf.empty()) {
+                        mImpl->BroadcastBulk(feat_buf);
+                    }
+                }
+            }
+
+            // 3. Map events
+            auto events = mpSource->PopPendingMapEvents();
+            for (const auto& ev : events) {
+                if (ev.type == VisualizationEventType::POINTS_ADDED || ev.type == VisualizationEventType::POINTS_UPDATED) {
+                    std::lock_guard<std::mutex> lock(mMirrorMutex);
+                    for (const auto& pt : ev.points) {
+                        mMirrorPoints[pt.id] = MirrorMapPoint{pt.id, pt.world_position, pt.reference};
+                    }
+                } else if (ev.type == VisualizationEventType::POINTS_REMOVED) {
+                    std::lock_guard<std::mutex> lock(mMirrorMutex);
+                    for (const auto& pt : ev.points) {
+                        mMirrorPoints.erase(pt.id);
+                    }
+                }
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "[WebViewerBackend] MirrorWorkerLoop exception: " << e.what() << std::endl;
+        } catch (...) {
+            std::cerr << "[WebViewerBackend] MirrorWorkerLoop unknown exception" << std::endl;
+        }
+
+        // Periodically broadcast point chunk
+        std::vector<VisualizationMapPoint> points_list;
+        {
+            std::lock_guard<std::mutex> lock(mMirrorMutex);
+            for (const auto& kv : mMirrorPoints) {
+                points_list.push_back({kv.second.id, kv.second.pos, kv.second.reference});
+            }
+        }
+
+        if (!points_list.empty()) {
+            auto pts_buf = WebViewerProtocol::EncodePointsChunk(mpSource->GetCurrentEpoch(), 1, points_list);
+            mImpl->BroadcastBulk(pts_buf);
+        }
+    }
+}
+
+} // namespace ORB_SLAM3

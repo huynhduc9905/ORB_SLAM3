@@ -25,7 +25,9 @@
 #include "SystemSnapshots.h"
 
 #include <set>
+#ifdef HAVE_PANGOLIN
 #include <pangolin/pangolin.h>
+#endif
 #include <mutex>
 #include <map>
 #ifdef ORB_SLAM3_SNAPSHOT_TESTING
@@ -205,7 +207,9 @@ protected:
 
 
     // View of the map in aerial sight (for the AtlasViewer)
-    GLubyte* mThumbnail;
+    // Declared as unsigned char rather than GLubyte so the header does not
+    // depend on GL types, which are only available when Pangolin is present.
+    unsigned char* mThumbnail;
 
     bool mIsInUse;
     bool mHasTumbnail;

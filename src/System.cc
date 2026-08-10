@@ -20,8 +20,12 @@
 
 #include "System.h"
 #include "Converter.h"
+#include "VisualizationSource.h"
+#include "WebViewerBackend.h"
 #include <thread>
+#ifdef HAVE_PANGOLIN
 #include <pangolin/pangolin.h>
+#endif
 #include <iomanip>
 #include <openssl/md5.h>
 #include <boost/serialization/base_object.hpp>
@@ -278,11 +282,57 @@ try
     if(bUseViewer)
     //if(false) // TODO
     {
+#ifdef HAVE_PANGOLIN
         mpViewer = new Viewer(this, mpFrameDrawer,mpMapDrawer,mpTracker,strSettingsFile,settings_);
         mptViewer = new thread(&Viewer::Run, mpViewer);
         mpTracker->SetViewer(mpViewer);
         mpLoopCloser->mpViewer = mpViewer;
         mpViewer->both = mpFrameDrawer->both;
+#endif
+    }
+
+    // Initialize the WebViewer backend. Configured via the settings file so
+    // deployments can move the port, restrict the bind address, or disable the
+    // web frontend without recompiling.
+    bool webEnabled = bUseViewer;
+    int webPort = 8080;
+    std::string webBindAddr = "127.0.0.1";
+    std::string webStaticRoot = "./web_viewer/dist";
+
+    cv::FileNode webNode = fsSettings["WebViewer.Enabled"];
+    if(!webNode.empty()) {
+        webEnabled = bUseViewer && (static_cast<int>(webNode) != 0);
+    }
+    webNode = fsSettings["WebViewer.Port"];
+    if(!webNode.empty()) {
+        webPort = static_cast<int>(webNode);
+    }
+    webNode = fsSettings["WebViewer.BindAddress"];
+    if(!webNode.empty()) {
+        webBindAddr = static_cast<std::string>(webNode);
+    }
+    webNode = fsSettings["WebViewer.StaticRoot"];
+    if(!webNode.empty()) {
+        webStaticRoot = static_cast<std::string>(webNode);
+    }
+
+    if (webEnabled) {
+        mpVisSource = std::make_shared<VisualizationSource>();
+        WebViewerConfig cfg;
+        cfg.enabled = true;
+        cfg.bind_address = webBindAddr;
+        cfg.port = webPort;
+        cfg.static_root = webStaticRoot;
+
+        mpWebBackend = std::make_unique<WebViewerBackend>(mpVisSource, cfg);
+        mpWebBackend->Start();
+
+        if (webBindAddr != "127.0.0.1" && webBindAddr != "localhost") {
+            std::cerr << "WARNING: WebViewer is bound to " << webBindAddr << ":" << webPort
+                      << " and serves live camera imagery and map data with NO authentication."
+                      << " Restrict it to a trusted network or set WebViewer.BindAddress to 127.0.0.1."
+                      << std::endl;
+        }
     }
 
 #ifdef ORB_SLAM3_SNAPSHOT_TESTING
@@ -334,12 +384,27 @@ void System::Cleanup(bool destroyResources) noexcept
 
     joinAndDelete(mptLocalMapping);
     joinAndDelete(mptLoopClosing);
+
+    // The loop-closing dispatcher can exit while its separately launched GBA
+    // worker is still running. Reap it before viewer teardown or destruction
+    // of LoopClosing, LocalMapping, Atlas, and every map-owned KeyFrame/Point.
+    if(mpLoopCloser)
+        mpLoopCloser->StopAndJoinGlobalBundleAdjustment();
 #ifndef ORB_SLAM3_HEADLESS
     joinAndDelete(mptViewer);
 #endif
 
+    // Stop the web backend before tearing down SLAM state. Its mirror thread
+    // polls the visualization source, so it must be joined while the objects
+    // that feed it are still alive.
+    if(mpWebBackend)
+        mpWebBackend->Stop();
+
     if(!destroyResources)
         return;
+
+    mpWebBackend.reset();
+    mpVisSource.reset();
 
 #ifndef ORB_SLAM3_HEADLESS
     delete mpViewer;

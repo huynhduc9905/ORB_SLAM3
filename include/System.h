@@ -81,6 +81,8 @@ class Tracking;
 class LocalMapping;
 class LoopClosing;
 class Settings;
+class VisualizationSource;
+class WebViewerBackend;
 
 class System
 {
@@ -158,6 +160,8 @@ public:
     void Shutdown();
     bool isShutDown();
 
+    Tracking* GetTracker() { return mpTracker; }
+
     // Save camera trajectory in the TUM RGB-D dataset format.
     // Only for stereo and RGB-D. This method does not work for monocular.
     // Call first Shutdown()
@@ -210,7 +214,11 @@ public:
     void InsertTrackTime(double& time);
 #endif
 
+    std::shared_ptr<VisualizationSource> GetVisualizationSource() const { return mpVisSource; }
+
 private:
+    std::shared_ptr<VisualizationSource> mpVisSource;
+    std::unique_ptr<WebViewerBackend> mpWebBackend;
 
     void Cleanup(bool destroyResources) noexcept;
 
