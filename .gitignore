@@ -91,3 +91,14 @@ my_settings.txt
 borrar/*
 
 */ExecMean.txt
+
+# Generated runtime artifacts. Large data belongs on /data, not in the repo:
+# the root filesystem is small. See scripts/stress_test.py --crash-dir/--output-dir.
+crash_reports/
+build_clean/
+web_viewer/node_modules/
+CMakeFiles/
+dataset/
+semantic-review/
+.kiro/
+test_build/
