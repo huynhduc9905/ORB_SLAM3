@@ -147,7 +147,14 @@ namespace ORB_SLAM3 {
         double y = xyz_trans[1];
         double z = xyz_trans[2];
 
-        auto projectJac = -pCamera->projectJac(xyz_trans);
+        // Must be a concrete Eigen::Matrix, not auto: unary operator- on a
+        // temporary Eigen::Matrix returns an expression template that holds a
+        // reference to that temporary. Binding it with auto does not extend
+        // the temporary's lifetime, so every use after this statement reads
+        // freed stack memory (confirmed via AddressSanitizer:
+        // stack-use-after-scope, manifesting as sporadic heap/mutex
+        // corruption in LocalBundleAdjustment under concurrent load).
+        const Eigen::Matrix<double,2,3> projectJac = -pCamera->projectJac(xyz_trans);
 
         _jacobianOplusXi =  projectJac * T.rotation().toRotationMatrix();
 

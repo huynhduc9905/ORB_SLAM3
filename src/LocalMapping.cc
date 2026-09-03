@@ -1405,8 +1405,8 @@ void LocalMapping::InitializeIMU(float priorG, float priorA, bool bFIBA)
             KeyFrame* pRefKF = pMP->GetReferenceKeyFrame();
 
             // A MapPoint may have no reference keyframe (created from a Frame,
-            // or its last observation was erased).
-            if(!pRefKF)
+            // or its last observation was erased), or it may have been marked bad.
+            if(!pRefKF || pRefKF->isBad())
                 continue;
 
             if(pRefKF->mnBAGlobalForKF!=GBAid)

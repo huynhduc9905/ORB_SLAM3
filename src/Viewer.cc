@@ -18,7 +18,9 @@
 
 
 #include "Viewer.h"
+#ifdef HAVE_PANGOLIN
 #include <pangolin/pangolin.h>
+#endif
 
 #include <mutex>
 
@@ -163,6 +165,7 @@ void Viewer::Run()
 {
     mbFinished = false;
     mbStopped = false;
+#ifdef HAVE_PANGOLIN
 
     pangolin::CreateWindowAndBind("ORB-SLAM3: Map Viewer",1024,768);
 
@@ -203,8 +206,11 @@ void Viewer::Run()
     pangolin::OpenGlMatrix Twc, Twr;
     Twc.SetIdentity();
     pangolin::OpenGlMatrix Ow; // Oriented with g in the z axis
-    Ow.SetIdentity();
-    cv::namedWindow("ORB-SLAM3: Current Frame");
+    try {
+        cv::namedWindow("ORB-SLAM3: Current Frame");
+    } catch(const cv::Exception& e) {
+        // HighGUI GUI windowing not available in OpenCV build; Pangolin 3D viewer will run directly
+    }
 
     bool bFollow = true;
     bool bLocalizationMode = false;
@@ -335,8 +341,12 @@ void Viewer::Run()
             cv::resize(toShow, toShow, cv::Size(width, height));
         }
 
-        cv::imshow("ORB-SLAM3: Current Frame",toShow);
-        cv::waitKey(mT);
+        try {
+            cv::imshow("ORB-SLAM3: Current Frame",toShow);
+            cv::waitKey(mT);
+        } catch(const cv::Exception& e) {
+            // HighGUI GUI windowing not available in OpenCV build
+        }
 
         if(menuReset)
         {
@@ -376,9 +386,15 @@ void Viewer::Run()
             }
         }
 
-        if(CheckFinish())
+        if(CheckFinish() || pangolin::ShouldQuit())
             break;
     }
+#else
+    while(!CheckFinish())
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+#endif
 
     SetFinish();
 }

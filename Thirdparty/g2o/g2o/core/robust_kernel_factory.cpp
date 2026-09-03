@@ -49,11 +49,12 @@ RobustKernelFactory::~RobustKernelFactory()
 
 RobustKernelFactory* RobustKernelFactory::instance()
 {
-  if (factoryInstance == 0) {
-    factoryInstance = new RobustKernelFactory;
-  }
-
-  return factoryInstance;
+  // C++11 guarantees that static-local initialization is thread-safe
+  // (magic statics). Replace the unprotected pointer with this idiom so
+  // concurrent calls from LocalMapping and LoopClosing threads cannot race
+  // on the lazy-init check.
+  static RobustKernelFactory the_instance;
+  return &the_instance;
 }
 
 void RobustKernelFactory::registerRobustKernel(const std::string& tag, AbstractRobustKernelCreator* c)

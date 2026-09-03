@@ -22,6 +22,8 @@
 #include "ORBmatcher.h"
 #include "FrameDrawer.h"
 #include "Converter.h"
+#include "VisualizationSource.h"
+#include "CrashMonitor.h"
 #include "G2oTypes.h"
 #include "Optimizer.h"
 #include "Pinhole.h"
@@ -1893,6 +1895,7 @@ void Tracking::Track()
     {
         pCurrentMap->SetLastMapChange(nCurMapChangeIndex);
         mbMapUpdated = true;
+        RequestMapVisualizationUpdate();
     }
 
 
@@ -1923,7 +1926,7 @@ void Tracking::Track()
     else
     {
         // System is initialized. Track Frame.
-        bool bOK;
+        bool bOK = false;
 
 #ifdef REGISTER_TIMES
         std::chrono::steady_clock::time_point time_StartPosePred = std::chrono::steady_clock::now();
@@ -2319,6 +2322,10 @@ void Tracking::Track()
 
     }
 
+    PublishCrashContext();
+
+    PublishVisualizationState();
+
 #ifdef REGISTER_LOOP
     if (Stop()) {
 
@@ -2329,6 +2336,113 @@ void Tracking::Track()
         }
     }
 #endif
+}
+
+void Tracking::PublishCrashContext()
+{
+    // Cheap, lock-free publication of where the pipeline is, so that a fatal
+    // signal handler can report it. The map size queries each take one short
+    // mutex, which is negligible next to a tracking iteration.
+    CrashContext &ctx = CrashMonitor::Context();
+    ctx.frame_id.store(static_cast<long long>(mCurrentFrame.mnId), std::memory_order_relaxed);
+    ctx.tracking_state.store(mState, std::memory_order_relaxed);
+    ctx.timestamp_ns.store(static_cast<long long>(mCurrentFrame.mTimeStamp * 1e9),
+                           std::memory_order_relaxed);
+
+    if(mpAtlas)
+    {
+        ctx.maps_in_atlas.store(mpAtlas->CountMaps(), std::memory_order_relaxed);
+
+        Map* pActiveMap = mpAtlas->GetCurrentMap();
+        if(pActiveMap)
+        {
+            ctx.keyframes_in_map.store(static_cast<int>(pActiveMap->KeyFramesInMap()),
+                                       std::memory_order_relaxed);
+            ctx.map_points_in_map.store(static_cast<int>(pActiveMap->MapPointsInMap()),
+                                        std::memory_order_relaxed);
+        }
+    }
+}
+
+void Tracking::PublishVisualizationState()
+{
+    if(!mpSystem)
+        return;
+
+    std::shared_ptr<VisualizationSource> pVisSource = mpSystem->GetVisualizationSource();
+    if(!pVisSource || !pVisSource->HasSubscribers())
+        return;
+
+    VisualizationFrameSnapshot frame_snap;
+    frame_snap.epoch = pVisSource->GetCurrentEpoch();
+    frame_snap.sequence = mCurrentFrame.mnId;
+    frame_snap.capture_timestamp_ns = static_cast<std::int64_t>(mCurrentFrame.mTimeStamp * 1e9);
+    frame_snap.tracking_state = mState;
+    frame_snap.pose_valid = (mState == OK && mCurrentFrame.isSet());
+    if (frame_snap.pose_valid) {
+        frame_snap.T_world_camera = mCurrentFrame.GetPose().inverse();
+    }
+    frame_snap.tracked_keypoints = mnMatchesInliers;
+    frame_snap.tracked_map_points = mnMatchesInliers;
+    pVisSource->PublishFrameState(frame_snap);
+
+    if (!mImGray.empty()) {
+        VisualizationImageSnapshot img_snap;
+        img_snap.epoch = frame_snap.epoch;
+        img_snap.frame_sequence = frame_snap.sequence;
+        img_snap.capture_timestamp_ns = frame_snap.capture_timestamp_ns;
+        img_snap.immutable_grayscale_image = mImGray.clone();
+
+        img_snap.features.reserve(mCurrentFrame.N);
+        for (int i = 0; i < mCurrentFrame.N; i++) {
+            VisualizationFeature feat;
+            feat.x = mCurrentFrame.mvKeys[i].pt.x;
+            feat.y = mCurrentFrame.mvKeys[i].pt.y;
+            if (mCurrentFrame.mvpMapPoints[i] && !mCurrentFrame.mvbOutlier[i]) {
+                feat.state = 2; // Map point match (green)
+            } else if (mCurrentFrame.mvbOutlier[i]) {
+                feat.state = 3; // Outlier (red)
+            } else {
+                feat.state = 1; // Tracked feature (yellow)
+            }
+            img_snap.features.push_back(feat);
+        }
+        pVisSource->PublishImageState(img_snap);
+    }
+
+    Map* pMap = mpAtlas->GetCurrentMap();
+    if (pMap) {
+        const auto now = std::chrono::steady_clock::now();
+        const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - mLastMapPubTime).count();
+        if (mbMapUpdatedForVisualizer.load(std::memory_order_relaxed) && elapsed >= 250) {
+            mLastMapPubTime = now;
+            mbMapUpdatedForVisualizer.store(false, std::memory_order_relaxed);
+
+            const std::vector<MapPoint*> vpMPs = pMap->GetAllMapPoints();
+            VisualizationMapEvent map_ev;
+            map_ev.epoch = frame_snap.epoch;
+            map_ev.type = VisualizationEventType::POINTS_UPDATED;
+            // This carries the complete set of live (non-bad) map points for the
+            // current map, so mark it authoritative: the backend then drops points
+            // that have been culled/fused (e.g. by loop closure) instead of keeping
+            // stale ghost copies that would make one object appear as two.
+            map_ev.full_snapshot = true;
+            map_ev.points.reserve(vpMPs.size());
+
+            for (MapPoint* pMP : vpMPs) {
+                if (pMP && !pMP->isBad()) {
+                    VisualizationMapPoint mp;
+                    mp.id = pMP->mnId;
+                    mp.world_position = pMP->GetWorldPos();
+                    mp.reference = false;
+                    map_ev.points.push_back(mp);
+                }
+            }
+            if (!map_ev.points.empty()) {
+                pVisSource->PublishMapEvent(map_ev);
+            }
+        }
+    }
 }
 
 
@@ -3221,7 +3335,20 @@ void Tracking::CreateNewKeyFrame()
     if(!mpLocalMapper->SetNotStop(true))
         return;
 
+    // RAII guard: if anything below throws (e.g. std::bad_alloc under memory
+    // pressure while creating the KeyFrame/MapPoints), SetNotStop(false) must
+    // still run. Without it, mbNotStop in LocalMapping is stuck true forever,
+    // so LocalMapping::Stop() can never succeed again, and CorrectLoop()'s/
+    // MergeLocal()'s "while(!mpLocalMapper->isStopped())" spins forever --
+    // a permanent deadlock between this function's exception and
+    // LoopClosing's next loop-closure attempt.
+    struct NotStopGuard {
+        LocalMapping* lm;
+        ~NotStopGuard() { lm->SetNotStop(false); }
+    } notStopGuard{mpLocalMapper};
+
     KeyFrame* pKF = new KeyFrame(mCurrentFrame,mpAtlas->GetCurrentMap(),mpKeyFrameDB);
+    RequestMapVisualizationUpdate();
 
     if(mpAtlas->isImuInitialized()) //  || mpLocalMapper->IsInitializing())
         pKF->bImu = true;
@@ -3334,7 +3461,8 @@ void Tracking::CreateNewKeyFrame()
 
     mpLocalMapper->InsertKeyFrame(pKF);
 
-    mpLocalMapper->SetNotStop(false);
+    // SetNotStop(false) runs via notStopGuard's destructor above, including
+    // on the normal path here.
 
     mnLastKeyFrameId = mCurrentFrame.mnId;
     mpLastKeyFrame = pKF;
@@ -3433,6 +3561,8 @@ void Tracking::UpdateLocalPoints()
     for(vector<KeyFrame*>::const_reverse_iterator itKF=mvpLocalKeyFrames.rbegin(), itEndKF=mvpLocalKeyFrames.rend(); itKF!=itEndKF; ++itKF)
     {
         KeyFrame* pKF = *itKF;
+        if(!pKF || pKF->isBad())
+            continue;
         const vector<MapPoint*> vpMPs = pKF->GetMapPointMatches();
 
         for(vector<MapPoint*>::const_iterator itMP=vpMPs.begin(), itEndMP=vpMPs.end(); itMP!=itEndMP; itMP++)

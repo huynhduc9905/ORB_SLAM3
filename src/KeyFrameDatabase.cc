@@ -23,7 +23,8 @@
 #include "KeyFrame.h"
 #include "Thirdparty/DBoW2/DBoW2/BowVector.h"
 
-#include<mutex>
+#include <mutex>
+#include <unordered_map>
 
 using namespace std;
 
@@ -68,6 +69,7 @@ void KeyFrameDatabase::erase(KeyFrame* pKF)
 
 void KeyFrameDatabase::clear()
 {
+    unique_lock<mutex> lock(mMutex);
     mvInvertedFile.clear();
     mvInvertedFile.resize(mpVoc->size());
 }
@@ -606,6 +608,7 @@ void KeyFrameDatabase::DetectNBestCandidates(KeyFrame *pKF, vector<KeyFrame*> &v
 {
     list<KeyFrame*> lKFsSharingWords;
     set<KeyFrame*> spConnectedKF;
+    std::unordered_map<KeyFrame*, float> queryScores;
 
     // Search all keyframes that share a word with current frame
     {
@@ -668,7 +671,7 @@ void KeyFrameDatabase::DetectNBestCandidates(KeyFrame *pKF, vector<KeyFrame*> &v
         {
             nscores++;
             float si = mpVoc->score(pKF->mBowVec,pKFi->mBowVec);
-            pKFi->mPlaceRecognitionScore=si;
+            queryScores[pKFi] = si;
             lScoreAndMatch.push_back(make_pair(si,pKFi));
         }
     }
@@ -693,18 +696,20 @@ void KeyFrameDatabase::DetectNBestCandidates(KeyFrame *pKF, vector<KeyFrame*> &v
             KeyFrame* pKF2 = *vit;
             if(pKF2->mnPlaceRecognitionQuery!=pKF->mnId)
                 continue;
-            if(pKF2->mnPlaceRecognitionWords<=minCommonWords){
-                float si = mpVoc->score(pKF->mBowVec,pKF2->mBowVec);
-                pKF2->mPlaceRecognitionScore=si;
-                pKF2->mnPlaceRecognitionWords = minCommonWords+1;
-            }
-            accScore+=pKF2->mPlaceRecognitionScore;
-            if(pKF2->mPlaceRecognitionScore>bestScore)
-            {
-                pBestKF=pKF2;
-                bestScore = pKF2->mPlaceRecognitionScore;
-            }
 
+            auto itScore = queryScores.find(pKF2);
+            float score2 = 0.f;
+            if(itScore != queryScores.end()) {
+                score2 = itScore->second;
+            } else {
+                score2 = mpVoc->score(pKF->mBowVec, pKF2->mBowVec);
+                queryScores.emplace(pKF2, score2);
+            }
+            accScore += score2;
+            if(score2 > bestScore) {
+                pBestKF = pKF2;
+                bestScore = score2;
+            }
         }
         lAccScoreAndMatch.push_back(make_pair(accScore,pBestKF));
         if(accScore>bestAccScore)
@@ -783,6 +788,7 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F, Map
     list<pair<float,KeyFrame*> > lScoreAndMatch;
 
     int nscores=0;
+    std::unordered_map<KeyFrame*, float> queryScores;
 
     // Compute similarity score.
     for(list<KeyFrame*>::iterator lit=lKFsSharingWords.begin(), lend= lKFsSharingWords.end(); lit!=lend; lit++)
@@ -793,7 +799,7 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F, Map
         {
             nscores++;
             float si = mpVoc->score(F->mBowVec,pKFi->mBowVec);
-            pKFi->mRelocScore=si;
+            queryScores[pKFi] = si;
             lScoreAndMatch.push_back(make_pair(si,pKFi));
         }
     }
@@ -819,11 +825,20 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F, Map
             if(pKF2->mnRelocQuery!=F->mnId)
                 continue;
 
-            accScore+=pKF2->mRelocScore;
-            if(pKF2->mRelocScore>bestScore)
+            auto itScore = queryScores.find(pKF2);
+            float score2 = 0.f;
+            if(itScore != queryScores.end()) {
+                score2 = itScore->second;
+            } else {
+                score2 = mpVoc->score(F->mBowVec, pKF2->mBowVec);
+                queryScores.emplace(pKF2, score2);
+            }
+
+            accScore += score2;
+            if(score2 > bestScore)
             {
-                pBestKF=pKF2;
-                bestScore = pKF2->mRelocScore;
+                pBestKF = pKF2;
+                bestScore = score2;
             }
 
         }

@@ -17,16 +17,22 @@ include(CheckCXXCompilerFlag)
 CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
 CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
 if(COMPILER_SUPPORTS_CXX11)
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
    add_definitions(-DCOMPILEDWITHC11)
    message(STATUS "Using flag -std=c++11.")
 elseif(COMPILER_SUPPORTS_CXX0X)
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
    add_definitions(-DCOMPILEDWITHC0X)
    message(STATUS "Using flag -std=c++0x.")
 else()
    message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
 endif()
+
+# The web visualizer backend (Boost.Beast websockets, std::make_unique)
+# requires C++17. Set it via the standard properties rather than raw flags so
+# it is not silently overridden by the checks above.
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+option(BUILD_TESTS "Build unit tests" ON)
 
 LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)
 
@@ -39,7 +45,24 @@ MESSAGE("OPENCV VERSION:")
 MESSAGE(${OpenCV_VERSION})
 
 find_package(Eigen3 3.1.0 REQUIRED)
-find_package(Pangolin REQUIRED)
+
+# Pangolin is optional: the web visualizer provides a headless frontend, so a
+# build without Pangolin is fully supported. HAVE_PANGOLIN gates all native
+# viewer code.
+find_package(Pangolin QUIET)
+if(Pangolin_FOUND)
+    add_definitions(-DHAVE_PANGOLIN)
+    message(STATUS "Pangolin found: native viewer enabled.")
+else()
+    message(STATUS "Pangolin not found: building headless, web visualizer only.")
+endif()
+
+# Web visualizer dependencies, discovered rather than hardcoded so the build is
+# portable across machines.
+find_package(Boost REQUIRED COMPONENTS serialization thread filesystem)
+find_package(OpenSSL REQUIRED)
+find_package(Threads REQUIRED)
+
 find_package(realsense2)
 
 include_directories(
@@ -111,9 +134,19 @@ include/GeometricTools.h
 include/TwoViewReconstruction.h
 include/SerializationUtils.h
 include/Config.h
-include/Settings.h)
+include/Settings.h
+src/VisualizationSource.cc
+src/WebViewerProtocol.cc
+src/WebViewerBackend.cc
+src/CrashMonitor.cc
+include/VisualizationTypes.h
+include/VisualizationSource.h
+include/WebViewerProtocol.h
+include/WebViewerBackend.h
+include/CrashMonitor.h)
 
 add_subdirectory(Thirdparty/g2o)
+add_dependencies(${PROJECT_NAME} g2o)
 
 target_link_libraries(${PROJECT_NAME}
 ${OpenCV_LIBS}
@@ -121,8 +154,12 @@ ${EIGEN3_LIBS}
 ${Pangolin_LIBRARIES}
 ${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
 ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
--lboost_serialization
--lcrypto
+Boost::serialization
+Boost::thread
+Boost::filesystem
+OpenSSL::SSL
+OpenSSL::Crypto
+Threads::Threads
 )
 
 # If RealSense SDK is found the library is added and its examples compiled
@@ -171,6 +208,19 @@ target_link_libraries(stereo_kitti ${PROJECT_NAME})
 add_executable(stereo_euroc
         Examples/Stereo/stereo_euroc.cc)
 target_link_libraries(stereo_euroc ${PROJECT_NAME})
+
+# Web visualizer runners and the benchmark/stress harness.
+add_executable(stereo_web_runner
+        Examples/Stereo/stereo_web_runner.cc)
+target_link_libraries(stereo_web_runner ${PROJECT_NAME})
+
+add_executable(mono_web_runner
+        Examples/Monocular/mono_web_runner.cc)
+target_link_libraries(mono_web_runner ${PROJECT_NAME})
+
+add_executable(stereo_benchmark
+        Examples/Stereo/stereo_benchmark.cc)
+target_link_libraries(stereo_benchmark ${PROJECT_NAME})
 
 add_executable(stereo_tum_vi
         Examples/Stereo/stereo_tum_vi.cc)
@@ -387,4 +437,9 @@ if(realsense2_FOUND)
     add_executable(stereo_inertial_realsense_D435i_old
             Examples_old/Stereo-Inertial/stereo_inertial_realsense_D435i.cc)
     target_link_libraries(stereo_inertial_realsense_D435i_old ${PROJECT_NAME})
+endif()
+
+if(BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
 endif()

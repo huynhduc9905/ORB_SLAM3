@@ -33,6 +33,7 @@
 #include <functional>
 #include <thread>
 #include <mutex>
+#include <condition_variable>
 #include "Thirdparty/g2o/g2o/types/types_seven_dof_expmap.h"
 
 namespace ORB_SLAM3
@@ -89,7 +90,7 @@ public:
     bool isFinishedGBA(){
         unique_lock<std::mutex> lock(mMutexGBA);
         return mbFinishedGBA;
-    }   
+    }
 
     void RequestFinish();
 
@@ -234,6 +235,7 @@ protected:
     bool mbFinishedGBA;
     std::atomic<bool> mbStopGBA;
     std::mutex mMutexGBA;
+    std::condition_variable mCvGBA;  // notified when mbRunningGBA transitions to false
     std::thread* mpThreadGBA;
 
     // Fix scale in the stereo/RGB-D case

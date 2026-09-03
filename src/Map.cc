@@ -54,7 +54,7 @@ Map::Map():mnMaxKFid(0),mnBigChangeIdx(0), mbImuInitialized(false), mnMapChange(
 mbFail(false), mIsInUse(false), mHasTumbnail(false), mbBad(false), mnMapChangeNotified(0), mbIsInertial(false), mbIMU_BA1(false), mbIMU_BA2(false)
 {
     mnId=nNextId++;
-    mThumbnail = static_cast<GLubyte*>(NULL);
+    mThumbnail = static_cast<unsigned char*>(NULL);
 }
 
 Map::Map(int initKFid):mnInitKFid(initKFid), mnMaxKFid(initKFid),/*mnLastLoopKFid(initKFid),*/ mnBigChangeIdx(0), mIsInUse(false),
@@ -62,7 +62,7 @@ Map::Map(int initKFid):mnInitKFid(initKFid), mnMaxKFid(initKFid),/*mnLastLoopKFi
                        mnMapChange(0), mbFail(false), mnMapChangeNotified(0), mbIsInertial(false), mbIMU_BA1(false), mbIMU_BA2(false)
 {
     mnId=nNextId++;
-    mThumbnail = static_cast<GLubyte*>(NULL);
+    mThumbnail = static_cast<unsigned char*>(NULL);
 }
 
 Map::~Map()
@@ -75,11 +75,12 @@ Map::~Map()
 
     if(mThumbnail)
         delete mThumbnail;
-    mThumbnail = static_cast<GLubyte*>(NULL);
+    mThumbnail = static_cast<unsigned char*>(NULL);
 
     mvpReferenceMapPoints.clear();
     mvpKeyFrameOrigins.clear();
     mErasedKeyframeSnapshots.clear();
+    mErasedKeyframeOrder.clear();
 }
 
 void Map::AddKeyFrame(KeyFrame *pKF)
@@ -92,7 +93,8 @@ void Map::AddKeyFrame(KeyFrame *pKF)
         mpKFlowerID = pKF;
     }
     mspKeyFrames.insert(pKF);
-    mErasedKeyframeSnapshots.erase(pKF->mnId);
+    if(mErasedKeyframeSnapshots.count(pKF->mnId))
+        mErasedKeyframeSnapshots.erase(pKF->mnId);
     if(pKF->mnId>mnMaxKFid)
     {
         mnMaxKFid=pKF->mnId;
@@ -135,6 +137,12 @@ void Map::EraseKeyFrame(KeyFrame *pKF)
     unique_lock<mutex> lock(mMutexMap);
     mspKeyFrames.erase(pKF);
     mErasedKeyframeSnapshots[pKF->mnId] = CaptureKeyframeSnapshot(pKF, true, nullptr);
+    mErasedKeyframeOrder.push_back(pKF->mnId);
+    while(mErasedKeyframeOrder.size() > kMaxErasedTombstones) {
+        const std::uint64_t oldestId = mErasedKeyframeOrder.front();
+        mErasedKeyframeOrder.pop_front();
+        mErasedKeyframeSnapshots.erase(oldestId);
+    }
     if(mspKeyFrames.size()>0)
     {
         if(pKF->mnId == mpKFlowerID->mnId)
@@ -305,6 +313,7 @@ void Map::clear()
     mspMapPoints.clear();
     mspKeyFrames.clear();
     mErasedKeyframeSnapshots.clear();
+    mErasedKeyframeOrder.clear();
     mnMaxKFid = mnInitKFid;
     mbImuInitialized = false;
     mvpReferenceMapPoints.clear();

@@ -20,8 +20,14 @@
 
 #include "System.h"
 #include "Converter.h"
+#include "VisualizationSource.h"
+#include "WebViewerBackend.h"
 #include <thread>
+#include <chrono>
+#include <iostream>
+#ifdef HAVE_PANGOLIN
 #include <pangolin/pangolin.h>
+#endif
 #include <iomanip>
 #include <openssl/md5.h>
 #include <boost/serialization/base_object.hpp>
@@ -278,11 +284,57 @@ try
     if(bUseViewer)
     //if(false) // TODO
     {
+#ifdef HAVE_PANGOLIN
         mpViewer = new Viewer(this, mpFrameDrawer,mpMapDrawer,mpTracker,strSettingsFile,settings_);
         mptViewer = new thread(&Viewer::Run, mpViewer);
         mpTracker->SetViewer(mpViewer);
         mpLoopCloser->mpViewer = mpViewer;
         mpViewer->both = mpFrameDrawer->both;
+#endif
+    }
+
+    // Initialize the WebViewer backend. Configured via the settings file so
+    // deployments can move the port, restrict the bind address, or disable the
+    // web frontend without recompiling.
+    bool webEnabled = bUseViewer;
+    int webPort = 8080;
+    std::string webBindAddr = "127.0.0.1";
+    std::string webStaticRoot = "./web_viewer/dist";
+
+    cv::FileNode webNode = fsSettings["WebViewer.Enabled"];
+    if(!webNode.empty()) {
+        webEnabled = bUseViewer && (static_cast<int>(webNode) != 0);
+    }
+    webNode = fsSettings["WebViewer.Port"];
+    if(!webNode.empty()) {
+        webPort = static_cast<int>(webNode);
+    }
+    webNode = fsSettings["WebViewer.BindAddress"];
+    if(!webNode.empty()) {
+        webBindAddr = static_cast<std::string>(webNode);
+    }
+    webNode = fsSettings["WebViewer.StaticRoot"];
+    if(!webNode.empty()) {
+        webStaticRoot = static_cast<std::string>(webNode);
+    }
+
+    if (webEnabled) {
+        mpVisSource = std::make_shared<VisualizationSource>();
+        WebViewerConfig cfg;
+        cfg.enabled = true;
+        cfg.bind_address = webBindAddr;
+        cfg.port = webPort;
+        cfg.static_root = webStaticRoot;
+
+        mpWebBackend = std::make_unique<WebViewerBackend>(mpVisSource, cfg);
+        mpWebBackend->Start();
+
+        if (webBindAddr != "127.0.0.1" && webBindAddr != "localhost") {
+            std::cerr << "WARNING: WebViewer is bound to " << webBindAddr << ":" << webPort
+                      << " and serves live camera imagery and map data with NO authentication."
+                      << " Restrict it to a trusted network or set WebViewer.BindAddress to 127.0.0.1."
+                      << std::endl;
+        }
     }
 
 #ifdef ORB_SLAM3_SNAPSHOT_TESTING
@@ -320,53 +372,98 @@ void System::Cleanup(bool destroyResources) noexcept
         mpViewer->RequestFinish();
 #endif
 
-    const auto joinAndDelete = [](thread*& worker) {
+    bool localMapperDeadlocked = false;
+    bool loopCloserDeadlocked = false;
+#ifndef ORB_SLAM3_HEADLESS
+    bool viewerDeadlocked = false;
+#endif
+
+    const auto safeJoinWorker = [](thread*& worker, auto* subsystem, const char* name, bool& threadDeadlocked) {
         if(!worker)
             return;
         if(worker->joinable() && worker->get_id() != this_thread::get_id())
-            worker->join();
-        if(!worker->joinable())
         {
-            delete worker;
-            worker = nullptr;
+            const auto deadline = chrono::steady_clock::now() + chrono::seconds(5);
+            while(subsystem && !subsystem->isFinished() && chrono::steady_clock::now() < deadline)
+            {
+                this_thread::sleep_for(chrono::milliseconds(20));
+            }
+            if(subsystem && !subsystem->isFinished())
+            {
+                cerr << "CRITICAL ERROR: " << name << " thread did not exit within 5s shutdown timeout; possible deadlock." << endl;
+                threadDeadlocked = true;
+                worker->detach();
+            }
+            else
+            {
+                worker->join();
+            }
         }
+        delete worker;
+        worker = nullptr;
     };
 
-    joinAndDelete(mptLocalMapping);
-    joinAndDelete(mptLoopClosing);
+    safeJoinWorker(mptLocalMapping, mpLocalMapper, "LocalMapping", localMapperDeadlocked);
+    safeJoinWorker(mptLoopClosing, mpLoopCloser, "LoopClosing", loopCloserDeadlocked);
 
     // The loop-closing dispatcher can exit while its separately launched GBA
     // worker is still running. Reap it before viewer teardown or destruction
     // of LoopClosing, LocalMapping, Atlas, and every map-owned KeyFrame/Point.
-    if(mpLoopCloser)
+    if(mpLoopCloser && !loopCloserDeadlocked)
         mpLoopCloser->StopAndJoinGlobalBundleAdjustment();
 #ifndef ORB_SLAM3_HEADLESS
-    joinAndDelete(mptViewer);
+    safeJoinWorker(mptViewer, mpViewer, "Viewer", viewerDeadlocked);
 #endif
+
+    // Stop the web backend before tearing down SLAM state. Its mirror thread
+    // polls the visualization source, so it must be joined while the objects
+    // that feed it are still alive.
+    if(mpWebBackend)
+        mpWebBackend->Stop();
 
     if(!destroyResources)
         return;
 
+    mpWebBackend.reset();
+    mpVisSource.reset();
+
 #ifndef ORB_SLAM3_HEADLESS
-    delete mpViewer;
-    mpViewer = nullptr;
+    if(!viewerDeadlocked)
+    {
+        delete mpViewer;
+        mpViewer = nullptr;
+    }
 #endif
-    delete mpLoopCloser;
-    mpLoopCloser = nullptr;
-    delete mpLocalMapper;
-    mpLocalMapper = nullptr;
-    delete mpTracker;
-    mpTracker = nullptr;
+    if(!loopCloserDeadlocked)
+    {
+        delete mpLoopCloser;
+        mpLoopCloser = nullptr;
+    }
+    if(!localMapperDeadlocked)
+    {
+        delete mpLocalMapper;
+        mpLocalMapper = nullptr;
+    }
     delete mpMapDrawer;
     mpMapDrawer = nullptr;
     delete mpFrameDrawer;
     mpFrameDrawer = nullptr;
-    delete mpAtlas;
-    mpAtlas = nullptr;
-    delete mpKeyFrameDatabase;
-    mpKeyFrameDatabase = nullptr;
-    delete mpVocabulary;
-    mpVocabulary = nullptr;
+
+    if(!localMapperDeadlocked && !loopCloserDeadlocked)
+    {
+        delete mpTracker;
+        mpTracker = nullptr;
+        delete mpAtlas;
+        mpAtlas = nullptr;
+        delete mpKeyFrameDatabase;
+        mpKeyFrameDatabase = nullptr;
+        delete mpVocabulary;
+        mpVocabulary = nullptr;
+    }
+    else
+    {
+        cerr << "WARNING: Atlas, KeyFrameDatabase, Vocabulary, and Tracker are intentionally retained to prevent Use-After-Free from the detached hung thread." << endl;
+    }
     delete settings_;
     settings_ = nullptr;
 }
@@ -877,19 +974,28 @@ void System::SaveTrajectoryEuRoC(const string &filename)
 
     vector<Map*> vpMaps = mpAtlas->GetAllMaps();
     int numMaxKFs = 0;
-    Map* pBiggerMap;
+    Map* pBiggerMap = nullptr;
     std::cout << "There are " << std::to_string(vpMaps.size()) << " maps in the atlas" << std::endl;
     for(Map* pMap :vpMaps)
     {
+        if(!pMap) continue;
         std::cout << "  Map " << std::to_string(pMap->GetId()) << " has " << std::to_string(pMap->GetAllKeyFrames().size()) << " KFs" << std::endl;
-        if(pMap->GetAllKeyFrames().size() > numMaxKFs)
+        if((int)pMap->GetAllKeyFrames().size() > numMaxKFs)
         {
             numMaxKFs = pMap->GetAllKeyFrames().size();
             pBiggerMap = pMap;
         }
     }
 
+    if(!pBiggerMap)
+    {
+        std::cout << "There is no map with keyframes to save trajectory." << std::endl;
+        return;
+    }
+
     vector<KeyFrame*> vpKFs = pBiggerMap->GetAllKeyFrames();
+    if(vpKFs.empty())
+        return;
     sort(vpKFs.begin(),vpKFs.end(),KeyFrame::lId);
 
     // Transform all keyframes so that the first keyframe is at the origin.
@@ -1265,11 +1371,11 @@ void System::SaveKeyFrameTrajectoryEuRoC(const string &filename)
     cout << endl << "Saving keyframe trajectory to " << filename << " ..." << endl;
 
     vector<Map*> vpMaps = mpAtlas->GetAllMaps();
-    Map* pBiggerMap;
+    Map* pBiggerMap = nullptr;
     int numMaxKFs = 0;
     for(Map* pMap :vpMaps)
     {
-        if(pMap && pMap->GetAllKeyFrames().size() > numMaxKFs)
+        if(pMap && (int)pMap->GetAllKeyFrames().size() > numMaxKFs)
         {
             numMaxKFs = pMap->GetAllKeyFrames().size();
             pBiggerMap = pMap;
@@ -1283,6 +1389,8 @@ void System::SaveKeyFrameTrajectoryEuRoC(const string &filename)
     }
 
     vector<KeyFrame*> vpKFs = pBiggerMap->GetAllKeyFrames();
+    if(vpKFs.empty())
+        return;
     sort(vpKFs.begin(),vpKFs.end(),KeyFrame::lId);
 
     // Transform all keyframes so that the first keyframe is at the origin.

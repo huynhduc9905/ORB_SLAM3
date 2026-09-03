@@ -490,6 +490,12 @@ void MapPoint::UpdateNormalAndDepth()
         }
     }
 
+    // Guard against a ref KF that was SetBadFlag()'d and partially torn down
+    // between the lock scope above and this point. Its mutex may already be
+    // destroyed, making GetCameraCenter() (which locks mMutexPose) unsafe.
+    if(!pRefKF || pRefKF->isBad())
+        return;
+
     Eigen::Vector3f PC = Pos - pRefKF->GetCameraCenter();
     const float dist = PC.norm();
 
@@ -509,7 +515,7 @@ void MapPoint::UpdateNormalAndDepth()
         level = pRefKF->mvKeysUn[leftIndex].octave;
     }
     else if(leftIndex != -1){
-        if(leftIndex >= (int)pRefKF->mvKeys.size())
+        if(leftIndex < 0 || leftIndex >= (int)pRefKF->mvKeys.size())
             return;
         level = pRefKF -> mvKeys[leftIndex].octave;
     }
@@ -520,7 +526,6 @@ void MapPoint::UpdateNormalAndDepth()
         level = pRefKF -> mvKeysRight[nRightIdx].octave;
     }
 
-    //const int level = pRefKF->mvKeysUn[observations[pRefKF]].octave;
     const int nLevels = pRefKF->mnScaleLevels;
     if(level < 0 || level >= (int)pRefKF->mvScaleFactors.size() ||
        nLevels <= 0 || nLevels > (int)pRefKF->mvScaleFactors.size())
@@ -531,7 +536,8 @@ void MapPoint::UpdateNormalAndDepth()
         unique_lock<mutex> lock3(mMutexPos);
         mfMaxDistance = dist*levelScaleFactor;
         mfMinDistance = mfMaxDistance/pRefKF->mvScaleFactors[nLevels-1];
-        mNormalVector = normal/n;
+        if(n > 0)
+            mNormalVector = normal/n;
     }
 }
 

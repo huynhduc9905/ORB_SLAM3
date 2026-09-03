@@ -39,6 +39,8 @@
 
 #include "GeometricCamera.h"
 
+#include <atomic>
+#include <chrono>
 #include <mutex>
 #include <unordered_set>
 
@@ -114,6 +116,10 @@ public:
     void Release();
     bool stopRequested();
 #endif
+
+    void RequestMapVisualizationUpdate() noexcept {
+        mbMapUpdatedForVisualizer.store(true, std::memory_order_relaxed);
+    }
 
 public:
 
@@ -222,6 +228,13 @@ protected:
 
     bool NeedNewKeyFrame();
     void CreateNewKeyFrame();
+
+    // Publish frame, image and map state to the web visualizer. No-op when no
+    // visualization source exists or no client is subscribed.
+    void PublishVisualizationState();
+
+    // Publish lightweight pipeline state for inclusion in crash reports.
+    void PublishCrashContext();
 
     // Perform preintegration from last frame
     void PreintegrateIMU();
@@ -365,6 +378,9 @@ protected:
     bool mbNotStop;
     std::mutex mMutexStop;
 #endif
+
+    std::atomic<bool> mbMapUpdatedForVisualizer{true};
+    std::chrono::steady_clock::time_point mLastMapPubTime{};
 
 public:
     cv::Mat mImRight;

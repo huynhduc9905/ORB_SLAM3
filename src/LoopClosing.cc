@@ -1111,7 +1111,6 @@ void LoopClosing::CorrectLoop()
     // Avoid new keyframes are inserted while correcting the loop
     mpLocalMapper->RequestStop();
     mpLocalMapper->EmptyQueue(); // Proccess keyframes in the queue
-
     // Wait until Local Mapping has effectively stopped
     while(!mpLocalMapper->isStopped())
     {
@@ -2421,13 +2420,20 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
         {
             mbFinishedGBA = true;
             mbRunningGBA = false;
+            mCvGBA.notify_all();
             return;
         }
 
         if(!bImuInit && pActiveMap->isImuInitialized())
         {
+            // Terminal give-up for the owning thread (map became IMU-initialized,
+            // so this non-inertial GBA result is not applicable). Nobody else
+            // will clear the flag, so clear it here -- otherwise
+            // StopAndJoinGlobalBundleAdjustment() would wait on !mbRunningGBA
+            // forever and deadlock shutdown.
             mbFinishedGBA = true;
             mbRunningGBA = false;
+            mCvGBA.notify_all();
             return;
         }
 
@@ -2588,9 +2594,12 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
                     // Update according to the correction of its reference keyframe
                     KeyFrame* pRefKF = pMP->GetReferenceKeyFrame();
 
-                    // A MapPoint may have no reference keyframe (created from a
-                    // Frame, or its last observation was erased).
-                    if(!pRefKF)
+                    // mpRefKF is null for MapPoints constructed from a Frame
+                    // (e.g. during monocular initialization) rather than a
+                    // KeyFrame, and can remain null if it was never
+                    // subsequently assigned. Without this guard,
+                    // pRefKF->mnBAGlobalForKF below is a null dereference.
+                    if(!pRefKF || pRefKF->isBad())
                         continue;
 
                     if(pRefKF->mnBAGlobalForKF!=nLoopKF)
@@ -2631,6 +2640,9 @@ void LoopClosing::RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoop
 
         mbFinishedGBA = true;
         mbRunningGBA = false;
+        // Notify StopAndJoinGlobalBundleAdjustment that the worker has exited
+        // so System::Cleanup can safely proceed to tear down objects we use.
+        mCvGBA.notify_all();
     }
 }
 

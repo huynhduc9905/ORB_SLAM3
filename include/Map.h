@@ -25,9 +25,13 @@
 #include "SystemSnapshots.h"
 
 #include <set>
+#ifdef HAVE_PANGOLIN
 #include <pangolin/pangolin.h>
+#endif
 #include <mutex>
 #include <map>
+#include <deque>
+#include <cstdint>
 #ifdef ORB_SLAM3_SNAPSHOT_TESTING
 #include <functional>
 #endif
@@ -174,6 +178,8 @@ protected:
     // Immutable records are captured while the keyframe is alive and this map
     // is locked. They survive upstream keyframe destruction without retaining
     // non-owning addresses.
+    static constexpr size_t kMaxErasedTombstones = 1000;
+    std::deque<std::uint64_t> mErasedKeyframeOrder;
     std::map<std::uint64_t, KeyframeSnapshot> mErasedKeyframeSnapshots;
 
     KeyframeSnapshot CaptureKeyframeSnapshot(KeyFrame* pKF, bool tombstone,
@@ -205,7 +211,9 @@ protected:
 
 
     // View of the map in aerial sight (for the AtlasViewer)
-    GLubyte* mThumbnail;
+    // Declared as unsigned char rather than GLubyte so the header does not
+    // depend on GL types, which are only available when Pangolin is present.
+    unsigned char* mThumbnail;
 
     bool mIsInUse;
     bool mHasTumbnail;
