@@ -22,15 +22,19 @@
 #include "GeometricCamera.h"
 #include "Pinhole.h"
 #include "KannalaBrandt8.h"
+#include <algorithm>
 
 namespace ORB_SLAM3
 {
 
-Atlas::Atlas(){
+Atlas::Atlas(): mnLastInitKFidMap(0), mHasViewer(false), mpViewer(static_cast<Viewer*>(NULL)),
+               mpKeyFrameDB(static_cast<KeyFrameDatabase*>(NULL)), mpORBVocabulary(static_cast<ORBVocabulary*>(NULL))
+{
     mpCurrentMap = static_cast<Map*>(NULL);
 }
 
-Atlas::Atlas(int initKFid): mnLastInitKFidMap(initKFid), mHasViewer(false)
+Atlas::Atlas(int initKFid): mnLastInitKFidMap(initKFid), mHasViewer(false), mpViewer(static_cast<Viewer*>(NULL)),
+                           mpKeyFrameDB(static_cast<KeyFrameDatabase*>(NULL)), mpORBVocabulary(static_cast<ORBVocabulary*>(NULL))
 {
     mpCurrentMap = static_cast<Map*>(NULL);
     CreateNewMap();
@@ -58,6 +62,11 @@ Atlas::~Atlas()
 void Atlas::CreateNewMap()
 {
     unique_lock<mutex> lock(mMutexAtlas);
+    CreateNewMapNoLock();
+}
+
+void Atlas::CreateNewMapNoLock()
+{
     cout << "Creation of new map with id: " << Map::nNextId << endl;
     if(mpCurrentMap){
         if(!mspMaps.empty() && mnLastInitKFidMap < mpCurrentMap->GetMaxKFid())
@@ -86,6 +95,18 @@ void Atlas::ChangeMap(Map* pMap)
 
     mpCurrentMap = pMap;
     mpCurrentMap->SetCurrentMap();
+}
+
+void Atlas::SetCurrentMap(Map* pMap)
+{
+    unique_lock<mutex> lock(mMutexAtlas);
+    if(mpCurrentMap){
+        mpCurrentMap->SetStoredMap();
+    }
+
+    mpCurrentMap = pMap;
+    if(mpCurrentMap)
+        mpCurrentMap->SetCurrentMap();
 }
 
 unsigned long int Atlas::GetLastInitKFid()
@@ -250,8 +271,8 @@ Map* Atlas::GetCurrentMap()
 {
     unique_lock<mutex> lock(mMutexAtlas);
     if(!mpCurrentMap)
-        CreateNewMap();
-    while(mpCurrentMap->IsBad())
+        CreateNewMapNoLock();
+    while(mpCurrentMap && mpCurrentMap->IsBad())
         usleep(3000);
 
     return mpCurrentMap;
@@ -330,6 +351,11 @@ void Atlas::PreSave()
         pMi->PreSave(spCams);
     }
     RemoveBadMaps();
+
+    mvpBackupMaps.erase(
+        std::remove_if(mvpBackupMaps.begin(), mvpBackupMaps.end(),
+                       [](Map* pM) { return !pM || pM->IsBad() || pM->GetAllKeyFrames().empty(); }),
+        mvpBackupMaps.end());
 }
 
 void Atlas::PostLoad()
@@ -350,6 +376,27 @@ void Atlas::PostLoad()
         numMP += pMi->GetAllMapPoints().size();
     }
     mvpBackupMaps.clear();
+
+    Map* pLargestMap = nullptr;
+    size_t maxKFs = 0;
+    for(Map* pMap : mspMaps) {
+        if(pMap && !pMap->IsBad() && pMap->GetAllKeyFrames().size() > maxKFs) {
+            maxKFs = pMap->GetAllKeyFrames().size();
+            pLargestMap = pMap;
+        }
+    }
+    if(!pLargestMap && !mspMaps.empty()) {
+        for(Map* pMap : mspMaps) {
+            if(pMap && !pMap->IsBad()) {
+                pLargestMap = pMap;
+                break;
+            }
+        }
+    }
+    if(pLargestMap) {
+        mpCurrentMap = pLargestMap;
+        mpCurrentMap->SetCurrentMap();
+    }
 }
 
 void Atlas::SetKeyFrameDababase(KeyFrameDatabase* pKFDB)

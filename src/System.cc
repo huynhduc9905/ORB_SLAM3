@@ -25,6 +25,8 @@
 #include <thread>
 #include <chrono>
 #include <iostream>
+#include <cstdlib>
+#include <cstring>
 #ifdef HAVE_PANGOLIN
 #include <pangolin/pangolin.h>
 #endif
@@ -144,6 +146,24 @@ try
         }
     }
 
+    const char* envLoad = getenv("ORB_SLAM3_LOAD_ATLAS");
+    if(envLoad && strlen(envLoad) > 0)
+        mStrLoadAtlasFromFile = string(envLoad);
+
+    const char* envSave = getenv("ORB_SLAM3_SAVE_ATLAS");
+    if(envSave && strlen(envSave) > 0)
+        mStrSaveAtlasToFile = string(envSave);
+
+    const char* envLoc = getenv("ORB_SLAM3_LOCALIZE_ONLY");
+    if(!envLoc)
+        envLoc = getenv("ORB_SLAM3_LOCALIZATION_MODE");
+    if(envLoc && (string(envLoc) == "1" || string(envLoc) == "true" || string(envLoc) == "TRUE"))
+        mbActivateLocalizationMode = true;
+
+    cv::FileNode nodeLoc = fsSettings["System.LocalizationMode"];
+    if(!nodeLoc.empty() && nodeLoc.isInt() && ((int)nodeLoc != 0))
+        mbActivateLocalizationMode = true;
+
     node = fsSettings["loopClosing"];
     bool activeLC = true;
     if(!node.empty())
@@ -214,7 +234,10 @@ try
 
         loadedAtlas = true;
 
-        mpAtlas->CreateNewMap();
+        if(!mbActivateLocalizationMode)
+        {
+            mpAtlas->CreateNewMap();
+        }
 
         //clock_t timeElapsed = clock() - start;
         //unsigned msElapsed = timeElapsed / (CLOCKS_PER_SEC / 1000);
@@ -731,6 +754,23 @@ void System::ActivateLocalizationMode()
 {
     unique_lock<mutex> lock(mMutexMode);
     mbActivateLocalizationMode = true;
+    if(mpAtlas && mpAtlas->GetCurrentMap() && mpAtlas->GetCurrentMap()->KeyFramesInMap() == 0)
+    {
+        Map* pLargest = nullptr;
+        size_t maxKFs = 0;
+        for(Map* pMap : mpAtlas->GetAllMaps())
+        {
+            if(pMap && !pMap->IsBad() && pMap->GetAllKeyFrames().size() > maxKFs)
+            {
+                maxKFs = pMap->GetAllKeyFrames().size();
+                pLargest = pMap;
+            }
+        }
+        if(pLargest)
+        {
+            mpAtlas->ChangeMap(pLargest);
+        }
+    }
 }
 
 void System::DeactivateLocalizationMode()
@@ -1714,6 +1754,37 @@ void System::InsertTrackTime(double& time)
 }
 #endif
 
+string System::NormalizeAtlasPath(const string &filename)
+{
+    if(filename.empty()) return "";
+    string path = filename;
+    if(path.front() != '/' && path.rfind("./", 0) != 0 && path.find(':') == string::npos)
+        path = "./" + path;
+    if(path.size() < 4 || path.substr(path.size() - 4) != ".osa")
+        path += ".osa";
+    return path;
+}
+
+void System::SetSaveAtlasFile(const string &filename)
+{
+    mStrSaveAtlasToFile = filename;
+}
+
+void System::SetLoadAtlasFile(const string &filename)
+{
+    mStrLoadAtlasFromFile = filename;
+}
+
+string System::GetSaveAtlasFile() const
+{
+    return mStrSaveAtlasToFile;
+}
+
+string System::GetLoadAtlasFile() const
+{
+    return mStrLoadAtlasFromFile;
+}
+
 void System::SaveAtlas(int type){
     if(!mStrSaveAtlasToFile.empty())
     {
@@ -1722,9 +1793,7 @@ void System::SaveAtlas(int type){
         // Save the current session
         mpAtlas->PreSave();
 
-        string pathSaveFileName = "./";
-        pathSaveFileName = pathSaveFileName.append(mStrSaveAtlasToFile);
-        pathSaveFileName = pathSaveFileName.append(".osa");
+        string pathSaveFileName = NormalizeAtlasPath(mStrSaveAtlasToFile);
 
         string strVocabularyChecksum = CalculateCheckSum(mStrVocabularyFilePath,TEXT_FILE);
         std::size_t found = mStrVocabularyFilePath.find_last_of("/\\");
@@ -1761,9 +1830,9 @@ bool System::LoadAtlas(int type)
     string strFileVoc, strVocChecksum;
     bool isRead = false;
 
-    string pathLoadFileName = "./";
-    pathLoadFileName = pathLoadFileName.append(mStrLoadAtlasFromFile);
-    pathLoadFileName = pathLoadFileName.append(".osa");
+    string pathLoadFileName = NormalizeAtlasPath(mStrLoadAtlasFromFile);
+    if(pathLoadFileName.empty())
+        return false;
 
     if(type == TEXT_FILE) // File text
     {

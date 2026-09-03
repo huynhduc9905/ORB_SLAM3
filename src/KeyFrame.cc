@@ -69,7 +69,7 @@ KeyFrame::KeyFrame():
         mfLogScaleFactor(0), mvScaleFactors(0), mvLevelSigma2(0), mvInvLevelSigma2(0), mnMinX(0), mnMinY(0), mnMaxX(0),
         mnMaxY(0), mPrevKF(static_cast<KeyFrame*>(NULL)), mNextKF(static_cast<KeyFrame*>(NULL)), mbFirstConnection(true), mpParent(NULL), mbNotErase(false),
         mbToBeErased(false), mbBad(false), mHalfBaseline(0), mbCurrentPlaceRecognition(false), mnMergeCorrectedForKF(0),
-        NLeft(0),NRight(0), mnNumberOfOpt(0), mbHasVelocity(false)
+        NLeft(0),NRight(0), mnNumberOfOpt(0), mbHasVelocity(false), mpCamera(NULL), mpCamera2(NULL), mpImuPreintegrated(NULL)
 {
 
 }
