@@ -52,6 +52,7 @@
           buildInputs = (with pkgs; [
             boost
             eigen
+            gtest
             opencv4
             openssl
             glew
