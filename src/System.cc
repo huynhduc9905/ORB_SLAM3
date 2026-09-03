@@ -23,6 +23,8 @@
 #include "VisualizationSource.h"
 #include "WebViewerBackend.h"
 #include <thread>
+#include <chrono>
+#include <iostream>
 #ifdef HAVE_PANGOLIN
 #include <pangolin/pangolin.h>
 #endif
@@ -370,28 +372,47 @@ void System::Cleanup(bool destroyResources) noexcept
         mpViewer->RequestFinish();
 #endif
 
-    const auto joinAndDelete = [](thread*& worker) {
+    bool localMapperDeadlocked = false;
+    bool loopCloserDeadlocked = false;
+#ifndef ORB_SLAM3_HEADLESS
+    bool viewerDeadlocked = false;
+#endif
+
+    const auto safeJoinWorker = [](thread*& worker, auto* subsystem, const char* name, bool& threadDeadlocked) {
         if(!worker)
             return;
         if(worker->joinable() && worker->get_id() != this_thread::get_id())
-            worker->join();
-        if(!worker->joinable())
         {
-            delete worker;
-            worker = nullptr;
+            const auto deadline = chrono::steady_clock::now() + chrono::seconds(5);
+            while(subsystem && !subsystem->isFinished() && chrono::steady_clock::now() < deadline)
+            {
+                this_thread::sleep_for(chrono::milliseconds(20));
+            }
+            if(subsystem && !subsystem->isFinished())
+            {
+                cerr << "CRITICAL ERROR: " << name << " thread did not exit within 5s shutdown timeout; possible deadlock." << endl;
+                threadDeadlocked = true;
+                worker->detach();
+            }
+            else
+            {
+                worker->join();
+            }
         }
+        delete worker;
+        worker = nullptr;
     };
 
-    joinAndDelete(mptLocalMapping);
-    joinAndDelete(mptLoopClosing);
+    safeJoinWorker(mptLocalMapping, mpLocalMapper, "LocalMapping", localMapperDeadlocked);
+    safeJoinWorker(mptLoopClosing, mpLoopCloser, "LoopClosing", loopCloserDeadlocked);
 
     // The loop-closing dispatcher can exit while its separately launched GBA
     // worker is still running. Reap it before viewer teardown or destruction
     // of LoopClosing, LocalMapping, Atlas, and every map-owned KeyFrame/Point.
-    if(mpLoopCloser)
+    if(mpLoopCloser && !loopCloserDeadlocked)
         mpLoopCloser->StopAndJoinGlobalBundleAdjustment();
 #ifndef ORB_SLAM3_HEADLESS
-    joinAndDelete(mptViewer);
+    safeJoinWorker(mptViewer, mpViewer, "Viewer", viewerDeadlocked);
 #endif
 
     // Stop the web backend before tearing down SLAM state. Its mirror thread
@@ -407,23 +428,41 @@ void System::Cleanup(bool destroyResources) noexcept
     mpVisSource.reset();
 
 #ifndef ORB_SLAM3_HEADLESS
-    delete mpViewer;
-    mpViewer = nullptr;
+    if(!viewerDeadlocked)
+    {
+        delete mpViewer;
+        mpViewer = nullptr;
+    }
 #endif
-    delete mpLoopCloser;
-    mpLoopCloser = nullptr;
-    delete mpLocalMapper;
-    mpLocalMapper = nullptr;
+    if(!loopCloserDeadlocked)
+    {
+        delete mpLoopCloser;
+        mpLoopCloser = nullptr;
+    }
+    if(!localMapperDeadlocked)
+    {
+        delete mpLocalMapper;
+        mpLocalMapper = nullptr;
+    }
     delete mpTracker;
     mpTracker = nullptr;
     delete mpMapDrawer;
     mpMapDrawer = nullptr;
     delete mpFrameDrawer;
     mpFrameDrawer = nullptr;
-    delete mpAtlas;
-    mpAtlas = nullptr;
-    delete mpKeyFrameDatabase;
-    mpKeyFrameDatabase = nullptr;
+
+    if(!localMapperDeadlocked && !loopCloserDeadlocked)
+    {
+        delete mpAtlas;
+        mpAtlas = nullptr;
+        delete mpKeyFrameDatabase;
+        mpKeyFrameDatabase = nullptr;
+    }
+    else
+    {
+        cerr << "WARNING: Atlas and KeyFrameDatabase are intentionally retained to prevent Use-After-Free from the detached hung thread." << endl;
+    }
+
     delete mpVocabulary;
     mpVocabulary = nullptr;
     delete settings_;
