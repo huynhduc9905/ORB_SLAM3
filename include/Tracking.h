@@ -39,6 +39,8 @@
 
 #include "GeometricCamera.h"
 
+#include <atomic>
+#include <chrono>
 #include <mutex>
 #include <unordered_set>
 
@@ -114,6 +116,10 @@ public:
     void Release();
     bool stopRequested();
 #endif
+
+    void RequestMapVisualizationUpdate() noexcept {
+        mbMapUpdatedForVisualizer.store(true, std::memory_order_relaxed);
+    }
 
 public:
 
@@ -372,6 +378,9 @@ protected:
     bool mbNotStop;
     std::mutex mMutexStop;
 #endif
+
+    std::atomic<bool> mbMapUpdatedForVisualizer{true};
+    std::chrono::steady_clock::time_point mLastMapPubTime{};
 
 public:
     cv::Mat mImRight;

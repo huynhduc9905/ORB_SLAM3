@@ -1895,6 +1895,7 @@ void Tracking::Track()
     {
         pCurrentMap->SetLastMapChange(nCurMapChangeIndex);
         mbMapUpdated = true;
+        RequestMapVisualizationUpdate();
     }
 
 
@@ -2411,28 +2412,35 @@ void Tracking::PublishVisualizationState()
 
     Map* pMap = mpAtlas->GetCurrentMap();
     if (pMap) {
-        const std::vector<MapPoint*> vpMPs = pMap->GetAllMapPoints();
-        VisualizationMapEvent map_ev;
-        map_ev.epoch = frame_snap.epoch;
-        map_ev.type = VisualizationEventType::POINTS_UPDATED;
-        // This carries the complete set of live (non-bad) map points for the
-        // current map, so mark it authoritative: the backend then drops points
-        // that have been culled/fused (e.g. by loop closure) instead of keeping
-        // stale ghost copies that would make one object appear as two.
-        map_ev.full_snapshot = true;
-        map_ev.points.reserve(vpMPs.size());
+        const auto now = std::chrono::steady_clock::now();
+        const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - mLastMapPubTime).count();
+        if (mbMapUpdatedForVisualizer.load(std::memory_order_relaxed) && elapsed >= 250) {
+            mLastMapPubTime = now;
+            mbMapUpdatedForVisualizer.store(false, std::memory_order_relaxed);
 
-        for (MapPoint* pMP : vpMPs) {
-            if (pMP && !pMP->isBad()) {
-                VisualizationMapPoint mp;
-                mp.id = pMP->mnId;
-                mp.world_position = pMP->GetWorldPos();
-                mp.reference = false;
-                map_ev.points.push_back(mp);
+            const std::vector<MapPoint*> vpMPs = pMap->GetAllMapPoints();
+            VisualizationMapEvent map_ev;
+            map_ev.epoch = frame_snap.epoch;
+            map_ev.type = VisualizationEventType::POINTS_UPDATED;
+            // This carries the complete set of live (non-bad) map points for the
+            // current map, so mark it authoritative: the backend then drops points
+            // that have been culled/fused (e.g. by loop closure) instead of keeping
+            // stale ghost copies that would make one object appear as two.
+            map_ev.full_snapshot = true;
+            map_ev.points.reserve(vpMPs.size());
+
+            for (MapPoint* pMP : vpMPs) {
+                if (pMP && !pMP->isBad()) {
+                    VisualizationMapPoint mp;
+                    mp.id = pMP->mnId;
+                    mp.world_position = pMP->GetWorldPos();
+                    mp.reference = false;
+                    map_ev.points.push_back(mp);
+                }
             }
-        }
-        if (!map_ev.points.empty()) {
-            pVisSource->PublishMapEvent(map_ev);
+            if (!map_ev.points.empty()) {
+                pVisSource->PublishMapEvent(map_ev);
+            }
         }
     }
 }
@@ -3340,6 +3348,7 @@ void Tracking::CreateNewKeyFrame()
     } notStopGuard{mpLocalMapper};
 
     KeyFrame* pKF = new KeyFrame(mCurrentFrame,mpAtlas->GetCurrentMap(),mpKeyFrameDB);
+    RequestMapVisualizationUpdate();
 
     if(mpAtlas->isImuInitialized()) //  || mpLocalMapper->IsInitializing())
         pKF->bImu = true;
