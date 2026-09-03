@@ -788,6 +788,7 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F, Map
     list<pair<float,KeyFrame*> > lScoreAndMatch;
 
     int nscores=0;
+    std::unordered_map<KeyFrame*, float> queryScores;
 
     // Compute similarity score.
     for(list<KeyFrame*>::iterator lit=lKFsSharingWords.begin(), lend= lKFsSharingWords.end(); lit!=lend; lit++)
@@ -798,7 +799,7 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F, Map
         {
             nscores++;
             float si = mpVoc->score(F->mBowVec,pKFi->mBowVec);
-            pKFi->mRelocScore=si;
+            queryScores[pKFi] = si;
             lScoreAndMatch.push_back(make_pair(si,pKFi));
         }
     }
@@ -824,11 +825,20 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F, Map
             if(pKF2->mnRelocQuery!=F->mnId)
                 continue;
 
-            accScore+=pKF2->mRelocScore;
-            if(pKF2->mRelocScore>bestScore)
+            auto itScore = queryScores.find(pKF2);
+            float score2 = 0.f;
+            if(itScore != queryScores.end()) {
+                score2 = itScore->second;
+            } else {
+                score2 = mpVoc->score(F->mBowVec, pKF2->mBowVec);
+                queryScores.emplace(pKF2, score2);
+            }
+
+            accScore += score2;
+            if(score2 > bestScore)
             {
-                pBestKF=pKF2;
-                bestScore = pKF2->mRelocScore;
+                pBestKF = pKF2;
+                bestScore = score2;
             }
 
         }
