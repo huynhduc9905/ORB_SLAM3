@@ -53,7 +53,7 @@
             boost
             eigen
             gtest
-            opencv4
+            (opencv4.override { enableGtk3 = true; })
             openssl
             glew
             libGL
