@@ -30,6 +30,8 @@
 #endif
 #include <mutex>
 #include <map>
+#include <deque>
+#include <cstdint>
 #ifdef ORB_SLAM3_SNAPSHOT_TESTING
 #include <functional>
 #endif
@@ -176,6 +178,8 @@ protected:
     // Immutable records are captured while the keyframe is alive and this map
     // is locked. They survive upstream keyframe destruction without retaining
     // non-owning addresses.
+    static constexpr size_t kMaxErasedTombstones = 1000;
+    std::deque<std::uint64_t> mErasedKeyframeOrder;
     std::map<std::uint64_t, KeyframeSnapshot> mErasedKeyframeSnapshots;
 
     KeyframeSnapshot CaptureKeyframeSnapshot(KeyFrame* pKF, bool tombstone,
