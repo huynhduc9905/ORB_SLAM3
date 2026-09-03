@@ -47,16 +47,94 @@ void LoadStereoImages(const string &strPathToSequence, vector<string> &vstrImage
 int main(int argc, char **argv) {
     cv::setNumThreads(1);
 
-    if(argc < 4) {
-        cerr << "Usage: ./stereo_benchmark path_to_vocabulary path_to_settings path_to_dataset [output_json_path] [crash_report_dir] [run_label]" << endl;
+    string strSaveMap = "";
+    string strLoadMap = "";
+    bool bLocalizeOnly = false;
+    bool bUseViewer = false;
+
+    const char* env_viewer = getenv("VIEWER");
+    const char* env_pangolin = getenv("USE_PANGOLIN");
+    if((env_viewer && (string(env_viewer) == "1" || string(env_viewer) == "true")) ||
+       (env_pangolin && (string(env_pangolin) == "1" || string(env_pangolin) == "true"))) {
+        bUseViewer = true;
+    }
+
+    vector<string> positionalArgs;
+    for(int i = 1; i < argc; i++) {
+        string arg = argv[i];
+        if(arg == "--save-map") {
+            if(i + 1 < argc) {
+                strSaveMap = argv[++i];
+            } else {
+                cerr << "Error: --save-map requires an argument" << endl;
+                return 1;
+            }
+        } else if(arg.rfind("--save-map=", 0) == 0) {
+            strSaveMap = arg.substr(11);
+        } else if(arg == "--load-map") {
+            if(i + 1 < argc) {
+                strLoadMap = argv[++i];
+            } else {
+                cerr << "Error: --load-map requires an argument" << endl;
+                return 1;
+            }
+        } else if(arg.rfind("--load-map=", 0) == 0) {
+            strLoadMap = arg.substr(11);
+        } else if(arg == "--localize-only" || arg == "--loc-only") {
+            bLocalizeOnly = true;
+        } else if(arg == "--viewer" || arg == "--pangolin") {
+            bUseViewer = true;
+        } else if(arg.rfind("--", 0) != 0) {
+            positionalArgs.push_back(arg);
+        }
+    }
+
+    if(strLoadMap.empty()) {
+        const char* envLoad = getenv("ORB_SLAM3_LOAD_ATLAS");
+        if(envLoad && strlen(envLoad) > 0)
+            strLoadMap = envLoad;
+    }
+    if(strSaveMap.empty()) {
+        const char* envSave = getenv("ORB_SLAM3_SAVE_ATLAS");
+        if(envSave && strlen(envSave) > 0)
+            strSaveMap = envSave;
+    }
+    if(!bLocalizeOnly) {
+        const char* envLoc = getenv("ORB_SLAM3_LOCALIZE_ONLY");
+        if(!envLoc) envLoc = getenv("ORB_SLAM3_LOCALIZATION_MODE");
+        if(envLoc && (string(envLoc) == "1" || string(envLoc) == "true" || string(envLoc) == "TRUE"))
+            bLocalizeOnly = true;
+    }
+
+    if(positionalArgs.size() < 3) {
+        cerr << "Usage: ./stereo_benchmark path_to_vocabulary path_to_settings path_to_dataset [output_json_path] [crash_report_dir] [run_label] [--save-map <name>] [--load-map <name>] [--localize-only] [--viewer]" << endl;
         return 1;
     }
-    string strVocFile = argv[1];
-    string strSettingsFile = argv[2];
-    string strDatasetPath = argv[3];
-    string strOutputFile = (argc >= 5) ? argv[4] : "benchmark_out.json";
-    string strCrashDir = (argc >= 6) ? argv[5] : "/data/orbslam3_artifacts/crash_reports";
-    string strRunLabel = (argc >= 7) ? argv[6] : "benchmark";
+    string strVocFile = positionalArgs[0];
+    string strSettingsFile = positionalArgs[1];
+    string strDatasetPath = positionalArgs[2];
+    string strOutputFile = (positionalArgs.size() >= 4) ? positionalArgs[3] : "benchmark_out.json";
+    string strCrashDir   = (positionalArgs.size() >= 5) ? positionalArgs[4] : "/data/orbslam3_artifacts/crash_reports";
+    string strRunLabel   = (positionalArgs.size() >= 6) ? positionalArgs[5] : "benchmark";
+
+    if(!strSaveMap.empty())
+        setenv("ORB_SLAM3_SAVE_ATLAS", strSaveMap.c_str(), 1);
+    if(!strLoadMap.empty())
+        setenv("ORB_SLAM3_LOAD_ATLAS", strLoadMap.c_str(), 1);
+    if(bLocalizeOnly)
+        setenv("ORB_SLAM3_LOCALIZE_ONLY", "1", 1);
+
+    cout << "--- ORB-SLAM3 Stereo Benchmark Configuration ---" << endl;
+    cout << "Vocabulary:    " << strVocFile << endl;
+    cout << "Settings:      " << strSettingsFile << endl;
+    cout << "Dataset:       " << strDatasetPath << endl;
+    if(!strLoadMap.empty())
+        cout << "Atlas Load:    " << ORB_SLAM3::System::NormalizeAtlasPath(strLoadMap) << endl;
+    if(!strSaveMap.empty())
+        cout << "Atlas Save:    " << ORB_SLAM3::System::NormalizeAtlasPath(strSaveMap) << endl;
+    cout << "Pangolin:      " << (bUseViewer ? "ENABLED" : "DISABLED") << endl;
+    cout << "Mode:          " << (bLocalizeOnly ? "PURE RELOCALIZATION" : (!strLoadMap.empty() ? "MAP EXTENSION" : "MAPPING")) << endl;
+    cout << "-----------------------------------------------" << endl;
 
     // Install the crash monitor before constructing the SLAM system so faults
     // during initialization are captured too. The handler re-raises, so core
@@ -88,22 +166,13 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    bool bUseViewer = false;
-    const char* env_viewer = getenv("VIEWER");
-    const char* env_pangolin = getenv("USE_PANGOLIN");
-    if((env_viewer && (string(env_viewer) == "1" || string(env_viewer) == "true")) ||
-       (env_pangolin && (string(env_pangolin) == "1" || string(env_pangolin) == "true"))) {
-        bUseViewer = true;
-    }
-    for(int i = 1; i < argc; i++) {
-        if(string(argv[i]) == "--viewer" || string(argv[i]) == "--pangolin") {
-            bUseViewer = true;
-        }
-    }
-
     cout << "Loaded " << nImages << " stereo frame pairs from " << strDatasetPath << endl;
-    cout << "Pangolin viewer: " << (bUseViewer ? "ENABLED" : "DISABLED") << endl;
+
     ORB_SLAM3::System SLAM(strVocFile, strSettingsFile, ORB_SLAM3::System::STEREO, bUseViewer);
+
+    if(bLocalizeOnly) {
+        SLAM.ActivateLocalizationMode();
+    }
 
     vector<float> vTrackTimes;
     vTrackTimes.reserve(nImages);
