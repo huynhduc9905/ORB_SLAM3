@@ -1863,7 +1863,10 @@ void Tracking::Track()
 
     if(mState==NO_IMAGES_YET)
     {
-        mState = NOT_INITIALIZED;
+        if(mbOnlyTracking || (mpAtlas->GetCurrentMap() && mpAtlas->GetCurrentMap()->KeyFramesInMap() > 0))
+            mState = LOST;
+        else
+            mState = NOT_INITIALIZED;
     }
 
     mLastProcessedState=mState;
@@ -2016,6 +2019,15 @@ void Tracking::Track()
                 }
                 else if (mState == LOST)
                 {
+                    if(mpAtlas->KeyFramesInMap() > 0)
+                    {
+                        bOK = Relocalization();
+                        if(bOK)
+                        {
+                            mState = OK;
+                            return;
+                        }
+                    }
 
                     Verbose::PrintMess("A new map is started...", Verbose::VERBOSITY_NORMAL);
 
@@ -3744,7 +3756,9 @@ bool Tracking::Relocalization()
 
     // Relocalization is performed when tracking is lost
     // Track Lost: Query KeyFrame Database for keyframe candidates for relocalisation
-    vector<KeyFrame*> vpCandidateKFs = mpKeyFrameDB->DetectRelocalizationCandidates(&mCurrentFrame, mpAtlas->GetCurrentMap());
+    Map* pCurrentMap = mpAtlas->GetCurrentMap();
+    Map* pQueryMap = (pCurrentMap && pCurrentMap->KeyFramesInMap() > 0) ? pCurrentMap : nullptr;
+    vector<KeyFrame*> vpCandidateKFs = mpKeyFrameDB->DetectRelocalizationCandidates(&mCurrentFrame, pQueryMap);
 
     if(vpCandidateKFs.empty()) {
         Verbose::PrintMess("There are not candidates", Verbose::VERBOSITY_NORMAL);
@@ -3887,10 +3901,23 @@ bool Tracking::Relocalization()
                 if(nGood>=50)
                 {
                     bMatch = true;
+                    KeyFrame* pMatchedKF = vpCandidateKFs[i];
+                    if(pMatchedKF && pMatchedKF->GetMap() != mpAtlas->GetCurrentMap())
+                    {
+                        mpAtlas->ChangeMap(pMatchedKF->GetMap());
+                        mpLastKeyFrame = static_cast<KeyFrame*>(NULL);
+                    }
+                    mpReferenceKF = pMatchedKF;
+                    mCurrentFrame.mpReferenceKF = pMatchedKF;
                     break;
                 }
             }
         }
+    }
+
+    for(size_t sIdx = 0; sIdx < vpMLPnPsolvers.size(); ++sIdx) {
+        delete vpMLPnPsolvers[sIdx];
+        vpMLPnPsolvers[sIdx] = nullptr;
     }
 
     if(!bMatch)
