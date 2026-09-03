@@ -482,20 +482,33 @@ void MapPoint::UpdateNormalAndDepth()
     Eigen::Vector3f PC = Pos - pRefKF->GetCameraCenter();
     const float dist = PC.norm();
 
-    tuple<int ,int> indexes = observations[pRefKF];
+    auto itObs = observations.find(pRefKF);
+    if(itObs == observations.end())
+        return;
+
+    tuple<int ,int> indexes = itObs->second;
     int leftIndex = get<0>(indexes), rightIndex = get<1>(indexes);
-    int level;
-    if(pRefKF -> NLeft == -1){
+    int level = 0;
+    if(pRefKF->NLeft == -1){
+        if(leftIndex < 0 || leftIndex >= (int)pRefKF->mvKeysUn.size())
+            return;
         level = pRefKF->mvKeysUn[leftIndex].octave;
     }
     else if(leftIndex != -1){
-        level = pRefKF -> mvKeys[leftIndex].octave;
+        if(leftIndex < 0 || leftIndex >= (int)pRefKF->mvKeys.size())
+            return;
+        level = pRefKF->mvKeys[leftIndex].octave;
     }
     else{
-        level = pRefKF -> mvKeysRight[rightIndex - pRefKF -> NLeft].octave;
+        int rightIdx = rightIndex - pRefKF->NLeft;
+        if(rightIdx < 0 || rightIdx >= (int)pRefKF->mvKeysRight.size())
+            return;
+        level = pRefKF->mvKeysRight[rightIdx].octave;
     }
 
-    //const int level = pRefKF->mvKeysUn[observations[pRefKF]].octave;
+    if(level < 0 || level >= (int)pRefKF->mvScaleFactors.size())
+        return;
+
     const float levelScaleFactor =  pRefKF->mvScaleFactors[level];
     const int nLevels = pRefKF->mnScaleLevels;
 
@@ -503,7 +516,8 @@ void MapPoint::UpdateNormalAndDepth()
         unique_lock<mutex> lock3(mMutexPos);
         mfMaxDistance = dist*levelScaleFactor;
         mfMinDistance = mfMaxDistance/pRefKF->mvScaleFactors[nLevels-1];
-        mNormalVector = normal/n;
+        if(n > 0)
+            mNormalVector = normal/n;
     }
 }
 

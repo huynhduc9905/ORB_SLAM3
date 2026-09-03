@@ -2570,7 +2570,7 @@ void LoopClosing::StopAndJoinGlobalBundleAdjustment()
     // this wait is bounded by the time it takes to finish one optimizer step.
     {
         unique_lock<mutex> lock(mMutexGBA);
-        mCvGBA.wait(lock, [this]{ return !mbRunningGBA; });
+        mCvGBA.wait_for(lock, std::chrono::seconds(2), [this]{ return !mbRunningGBA; });
     }
 
     // The detached std::thread object is no longer in use; nothing to join.

@@ -444,8 +444,6 @@ void System::Cleanup(bool destroyResources) noexcept
         delete mpLocalMapper;
         mpLocalMapper = nullptr;
     }
-    delete mpTracker;
-    mpTracker = nullptr;
     delete mpMapDrawer;
     mpMapDrawer = nullptr;
     delete mpFrameDrawer;
@@ -453,18 +451,19 @@ void System::Cleanup(bool destroyResources) noexcept
 
     if(!localMapperDeadlocked && !loopCloserDeadlocked)
     {
+        delete mpTracker;
+        mpTracker = nullptr;
         delete mpAtlas;
         mpAtlas = nullptr;
         delete mpKeyFrameDatabase;
         mpKeyFrameDatabase = nullptr;
+        delete mpVocabulary;
+        mpVocabulary = nullptr;
     }
     else
     {
-        cerr << "WARNING: Atlas and KeyFrameDatabase are intentionally retained to prevent Use-After-Free from the detached hung thread." << endl;
+        cerr << "WARNING: Atlas, KeyFrameDatabase, Vocabulary, and Tracker are intentionally retained to prevent Use-After-Free from the detached hung thread." << endl;
     }
-
-    delete mpVocabulary;
-    mpVocabulary = nullptr;
     delete settings_;
     settings_ = nullptr;
 }
@@ -975,19 +974,28 @@ void System::SaveTrajectoryEuRoC(const string &filename)
 
     vector<Map*> vpMaps = mpAtlas->GetAllMaps();
     int numMaxKFs = 0;
-    Map* pBiggerMap;
+    Map* pBiggerMap = nullptr;
     std::cout << "There are " << std::to_string(vpMaps.size()) << " maps in the atlas" << std::endl;
     for(Map* pMap :vpMaps)
     {
+        if(!pMap) continue;
         std::cout << "  Map " << std::to_string(pMap->GetId()) << " has " << std::to_string(pMap->GetAllKeyFrames().size()) << " KFs" << std::endl;
-        if(pMap->GetAllKeyFrames().size() > numMaxKFs)
+        if((int)pMap->GetAllKeyFrames().size() > numMaxKFs)
         {
             numMaxKFs = pMap->GetAllKeyFrames().size();
             pBiggerMap = pMap;
         }
     }
 
+    if(!pBiggerMap)
+    {
+        std::cout << "There is no map with keyframes to save trajectory." << std::endl;
+        return;
+    }
+
     vector<KeyFrame*> vpKFs = pBiggerMap->GetAllKeyFrames();
+    if(vpKFs.empty())
+        return;
     sort(vpKFs.begin(),vpKFs.end(),KeyFrame::lId);
 
     // Transform all keyframes so that the first keyframe is at the origin.
@@ -1363,11 +1371,11 @@ void System::SaveKeyFrameTrajectoryEuRoC(const string &filename)
     cout << endl << "Saving keyframe trajectory to " << filename << " ..." << endl;
 
     vector<Map*> vpMaps = mpAtlas->GetAllMaps();
-    Map* pBiggerMap;
+    Map* pBiggerMap = nullptr;
     int numMaxKFs = 0;
     for(Map* pMap :vpMaps)
     {
-        if(pMap && pMap->GetAllKeyFrames().size() > numMaxKFs)
+        if(pMap && (int)pMap->GetAllKeyFrames().size() > numMaxKFs)
         {
             numMaxKFs = pMap->GetAllKeyFrames().size();
             pBiggerMap = pMap;
@@ -1381,6 +1389,8 @@ void System::SaveKeyFrameTrajectoryEuRoC(const string &filename)
     }
 
     vector<KeyFrame*> vpKFs = pBiggerMap->GetAllKeyFrames();
+    if(vpKFs.empty())
+        return;
     sort(vpKFs.begin(),vpKFs.end(),KeyFrame::lId);
 
     // Transform all keyframes so that the first keyframe is at the origin.

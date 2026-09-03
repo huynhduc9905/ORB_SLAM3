@@ -146,6 +146,7 @@ include/WebViewerBackend.h
 include/CrashMonitor.h)
 
 add_subdirectory(Thirdparty/g2o)
+add_dependencies(${PROJECT_NAME} g2o)
 
 target_link_libraries(${PROJECT_NAME}
 ${OpenCV_LIBS}
