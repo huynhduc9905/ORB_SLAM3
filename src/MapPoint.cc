@@ -187,8 +187,18 @@ void MapPoint::EraseObservation(KeyFrame* pKF)
 
             mObservations.erase(pKF);
 
+            // Dereferencing begin() on an emptied map is undefined behaviour and
+            // stored a garbage pointer in mpRefKF, which later crashed in
+            // UpdateNormalAndDepth -> KeyFrame::GetCameraCenter while locking a
+            // mutex at that bogus address. Drop the reference instead; consumers
+            // must tolerate a null reference keyframe.
             if(mpRefKF==pKF)
-                mpRefKF=mObservations.begin()->first;
+            {
+                if(mObservations.empty())
+                    mpRefKF=static_cast<KeyFrame*>(NULL);
+                else
+                    mpRefKF=mObservations.begin()->first;
+            }
 
             // If only 2 observations or less, discard point
             if(nObs<=2)
@@ -449,6 +459,13 @@ void MapPoint::UpdateNormalAndDepth()
     if(observations.empty())
         return;
 
+    // A MapPoint can legitimately have no reference keyframe: points created
+    // from a Frame start with mpRefKF == NULL, and erasing the last observation
+    // clears it. Every use below dereferences pRefKF, so bail out instead of
+    // locking a mutex through an invalid pointer.
+    if(!pRefKF)
+        return;
+
     Eigen::Vector3f normal;
     normal.setZero();
     int n=0;
@@ -482,14 +499,17 @@ void MapPoint::UpdateNormalAndDepth()
     Eigen::Vector3f PC = Pos - pRefKF->GetCameraCenter();
     const float dist = PC.norm();
 
-    auto itObs = observations.find(pRefKF);
-    if(itObs == observations.end())
+    // operator[] would INSERT a default {0,0} entry when the reference keyframe
+    // is not among the observations, and the octave lookups below would then
+    // read index 0 (or -1) of the wrong keypoint vector. Require a real entry.
+    map<KeyFrame*,tuple<int,int>>::const_iterator itRef = observations.find(pRefKF);
+    if(itRef == observations.end())
         return;
 
-    tuple<int ,int> indexes = itObs->second;
+    tuple<int ,int> indexes = itRef->second;
     int leftIndex = get<0>(indexes), rightIndex = get<1>(indexes);
-    int level = 0;
-    if(pRefKF->NLeft == -1){
+    int level;
+    if(pRefKF -> NLeft == -1){
         if(leftIndex < 0 || leftIndex >= (int)pRefKF->mvKeysUn.size())
             return;
         level = pRefKF->mvKeysUn[leftIndex].octave;
@@ -497,20 +517,20 @@ void MapPoint::UpdateNormalAndDepth()
     else if(leftIndex != -1){
         if(leftIndex < 0 || leftIndex >= (int)pRefKF->mvKeys.size())
             return;
-        level = pRefKF->mvKeys[leftIndex].octave;
+        level = pRefKF -> mvKeys[leftIndex].octave;
     }
     else{
-        int rightIdx = rightIndex - pRefKF->NLeft;
-        if(rightIdx < 0 || rightIdx >= (int)pRefKF->mvKeysRight.size())
+        const int nRightIdx = rightIndex - pRefKF -> NLeft;
+        if(rightIndex < 0 || nRightIdx < 0 || nRightIdx >= (int)pRefKF->mvKeysRight.size())
             return;
-        level = pRefKF->mvKeysRight[rightIdx].octave;
+        level = pRefKF -> mvKeysRight[nRightIdx].octave;
     }
 
-    if(level < 0 || level >= (int)pRefKF->mvScaleFactors.size())
-        return;
-
-    const float levelScaleFactor =  pRefKF->mvScaleFactors[level];
     const int nLevels = pRefKF->mnScaleLevels;
+    if(level < 0 || level >= (int)pRefKF->mvScaleFactors.size() ||
+       nLevels <= 0 || nLevels > (int)pRefKF->mvScaleFactors.size())
+        return;
+    const float levelScaleFactor =  pRefKF->mvScaleFactors[level];
 
     {
         unique_lock<mutex> lock3(mMutexPos);

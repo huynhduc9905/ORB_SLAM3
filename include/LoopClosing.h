@@ -29,6 +29,8 @@
 #include "KeyFrameDatabase.h"
 
 #include <boost/algorithm/string.hpp>
+#include <atomic>
+#include <functional>
 #include <thread>
 #include <mutex>
 #include <condition_variable>
@@ -54,6 +56,7 @@ public:
 public:
 
     LoopClosing(Atlas* pAtlas, KeyFrameDatabase* pDB, ORBVocabulary* pVoc,const bool bFixScale, const bool bActiveLC);
+    ~LoopClosing();
 
     void SetTracker(Tracking* pTracker);
 
@@ -67,8 +70,18 @@ public:
     void RequestReset();
     void RequestResetActiveMap(Map* pMap);
 
-    // This function will run in a separate thread
-    void RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoopKF);
+    // This function will run in a separate thread. The generation prevents a
+    // completed but superseded worker from applying stale corrections.
+    void RunGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoopKF,
+                                   unsigned long nGbaGeneration);
+
+    // Request cancellation and reap the owned GBA worker. This must complete
+    // before LoopClosing, LocalMapping, Atlas, or map resources are destroyed.
+    void StopAndJoinGlobalBundleAdjustment();
+
+#ifdef ORB_SLAM3_SNAPSHOT_TESTING
+    static void SetGlobalBundleAdjustmentStartHookForTesting(std::function<void()> hook);
+#endif
 
     bool isRunningGBA(){
         unique_lock<std::mutex> lock(mMutexGBA);
@@ -78,14 +91,6 @@ public:
         unique_lock<std::mutex> lock(mMutexGBA);
         return mbFinishedGBA;
     }
-
-    /**
-     * Signal the running GBA worker to stop and wait for it to finish before
-     * returning. Safe to call when no GBA is running (no-op). Must be called
-     * before destroying any object that RunGlobalBundleAdjustment touches
-     * (LocalMapper, Atlas, KeyFrames) to prevent a use-after-free.
-     */
-    void StopAndJoinGlobalBundleAdjustment();
 
     void RequestFinish();
 
@@ -128,6 +133,10 @@ public:
 protected:
 
     bool CheckNewKeyFrames();
+
+    void LaunchGlobalBundleAdjustment(Map* pActiveMap, unsigned long nLoopKF);
+    bool ShouldAbortGlobalBundleAdjustment(unsigned long nGbaGeneration);
+    void MarkGlobalBundleAdjustmentFinished();
 
 
     //Methods to implement the new place recognition algorithm
@@ -224,7 +233,7 @@ protected:
     // Variables related to Global Bundle Adjustment
     bool mbRunningGBA;
     bool mbFinishedGBA;
-    bool mbStopGBA;
+    std::atomic<bool> mbStopGBA;
     std::mutex mMutexGBA;
     std::condition_variable mCvGBA;  // notified when mbRunningGBA transitions to false
     std::thread* mpThreadGBA;
@@ -233,13 +242,11 @@ protected:
     bool mbFixScale;
 
 
-    // Generation counter for global bundle adjustment runs. A worker compares
-    // the value it captured at start against the current value to detect that
-    // it was superseded and must discard its result. Must be an integer: as a
-    // bool it saturated at 1 after the first increment, so the check at
-    // RunGlobalBundleAdjustment could never fire again. Incrementing a bool is
-    // also forbidden in C++17.
-    int mnFullBAIdx;
+    // Monotonic GBA generation counter. Each launch captures the current value
+    // and each stop increments it, so a completed-but-superseded worker can
+    // detect that it must discard its result. Must be a wide unsigned integer
+    // (not bool/narrow) so distinct in-flight generations never alias.
+    unsigned long mnFullBAIdx;
 
 
 
