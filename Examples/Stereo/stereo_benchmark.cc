@@ -15,6 +15,9 @@
 #include <System.h>
 #include <CrashMonitor.h>
 #include <unistd.h>
+#ifdef HAVE_PANGOLIN
+#include <pangolin/pangolin.h>
+#endif
 
 using namespace std;
 
@@ -85,8 +88,22 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    bool bUseViewer = false;
+    const char* env_viewer = getenv("VIEWER");
+    const char* env_pangolin = getenv("USE_PANGOLIN");
+    if((env_viewer && (string(env_viewer) == "1" || string(env_viewer) == "true")) ||
+       (env_pangolin && (string(env_pangolin) == "1" || string(env_pangolin) == "true"))) {
+        bUseViewer = true;
+    }
+    for(int i = 1; i < argc; i++) {
+        if(string(argv[i]) == "--viewer" || string(argv[i]) == "--pangolin") {
+            bUseViewer = true;
+        }
+    }
+
     cout << "Loaded " << nImages << " stereo frame pairs from " << strDatasetPath << endl;
-    ORB_SLAM3::System SLAM(strVocFile, strSettingsFile, ORB_SLAM3::System::STEREO, false);
+    cout << "Pangolin viewer: " << (bUseViewer ? "ENABLED" : "DISABLED") << endl;
+    ORB_SLAM3::System SLAM(strVocFile, strSettingsFile, ORB_SLAM3::System::STEREO, bUseViewer);
 
     vector<float> vTrackTimes;
     vTrackTimes.reserve(nImages);
@@ -113,6 +130,14 @@ int main(int argc, char **argv) {
 
         if(true) {
             cout << "Processed " << i << "/" << nImages << " frames (latency: " << fixed << setprecision(2) << ttrack << " ms)" << endl;
+        }
+
+        if(bUseViewer && i < nImages - 1) {
+            double dt = vTimeStamps[i+1] - tframe;
+            double ttrack_sec = ttrack / 1000.0;
+            if(ttrack_sec < dt && dt > 0 && dt < 1.0) {
+                usleep(static_cast<useconds_t>((dt - ttrack_sec) * 1e6));
+            }
         }
     }
 
@@ -218,6 +243,16 @@ int main(int argc, char **argv) {
     // operation) this doesn't apply because Shutdown() is never called mid-GBA.
     ORB_SLAM3::CrashMonitor::StopWatchdog();
 
-    exit(0);
+    if(bUseViewer) {
+        cout << "\n==================================================" << endl;
+        cout << "  Playback complete! Pangolin 3D viewer is open." << endl;
+        cout << "  Explore the map. Close the Pangolin window to exit." << endl;
+        cout << "==================================================" << endl;
+        while(SLAM.GetViewer() && !SLAM.GetViewer()->isFinished()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    }
+
+    SLAM.Shutdown();
     return 0;
 }

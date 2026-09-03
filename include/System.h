@@ -203,6 +203,7 @@ public:
     double GetTimeFromIMUInit();
     bool isLost();
     bool isFinished();
+    Viewer* GetViewer() const { return mpViewer; }
 
     void ChangeDataset();
 

@@ -91,6 +91,8 @@ public:
 
     void Stop() {
         mRunning = false;
+        boost::system::error_code ec;
+        mAcceptor.close(ec);
         mIoc.stop();
         if (mServerThread.joinable()) {
             mServerThread.join();
