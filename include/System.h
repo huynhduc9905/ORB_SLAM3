@@ -217,6 +217,12 @@ public:
 
     std::shared_ptr<VisualizationSource> GetVisualizationSource() const { return mpVisSource; }
 
+    static string NormalizeAtlasPath(const string &filename);
+    void SetSaveAtlasFile(const string &filename);
+    void SetLoadAtlasFile(const string &filename);
+    string GetSaveAtlasFile() const;
+    string GetLoadAtlasFile() const;
+
 private:
     std::shared_ptr<VisualizationSource> mpVisSource;
     std::unique_ptr<WebViewerBackend> mpWebBackend;

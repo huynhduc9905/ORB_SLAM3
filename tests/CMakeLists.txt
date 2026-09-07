@@ -3,6 +3,7 @@ find_package(GTest REQUIRED)
 set(TEST_SOURCES
     test_crash_monitor.cc
     test_web_viewer_mirror.cc
+    test_atlas_lifecycle.cc
 )
 
 add_executable(orb_slam3_tests ${TEST_SOURCES})

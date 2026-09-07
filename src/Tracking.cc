@@ -1863,7 +1863,10 @@ void Tracking::Track()
 
     if(mState==NO_IMAGES_YET)
     {
-        mState = NOT_INITIALIZED;
+        if(mbOnlyTracking || (mpAtlas->GetCurrentMap() && mpAtlas->GetCurrentMap()->KeyFramesInMap() > 0))
+            mState = LOST;
+        else
+            mState = NOT_INITIALIZED;
     }
 
     mLastProcessedState=mState;
@@ -2016,22 +2019,33 @@ void Tracking::Track()
                 }
                 else if (mState == LOST)
                 {
-
-                    Verbose::PrintMess("A new map is started...", Verbose::VERBOSITY_NORMAL);
-
-                    if (pCurrentMap->KeyFramesInMap()<10)
+                    if(mpAtlas->KeyFramesInMap() > 0)
                     {
-                        mpSystem->ResetActiveMap();
-                        Verbose::PrintMess("Reseting current map...", Verbose::VERBOSITY_NORMAL);
-                    }else
-                        CreateMapInAtlas();
+                        bOK = Relocalization();
+                    }
 
-                    if(mpLastKeyFrame)
-                        mpLastKeyFrame = static_cast<KeyFrame*>(NULL);
+                    if(bOK)
+                    {
+                        mState = OK;
+                    }
+                    else
+                    {
+                        Verbose::PrintMess("A new map is started...", Verbose::VERBOSITY_NORMAL);
 
-                    Verbose::PrintMess("done", Verbose::VERBOSITY_NORMAL);
+                        if (pCurrentMap->KeyFramesInMap()<10)
+                        {
+                            mpSystem->ResetActiveMap();
+                            Verbose::PrintMess("Reseting current map...", Verbose::VERBOSITY_NORMAL);
+                        }else
+                            CreateMapInAtlas();
 
-                    return;
+                        if(mpLastKeyFrame)
+                            mpLastKeyFrame = static_cast<KeyFrame*>(NULL);
+
+                        Verbose::PrintMess("done", Verbose::VERBOSITY_NORMAL);
+
+                        return;
+                    }
                 }
             }
 
@@ -2106,6 +2120,13 @@ void Tracking::Track()
                     bOK = bOKReloc || bOKMM;
                 }
             }
+        }
+
+        if(mpAtlas->GetCurrentMap() != pCurrentMap)
+        {
+            lock.unlock();
+            pCurrentMap = mpAtlas->GetCurrentMap();
+            lock = unique_lock<mutex>(pCurrentMap->mMutexMapUpdate);
         }
 
         if(!mCurrentFrame.mpReferenceKF)
@@ -3744,7 +3765,13 @@ bool Tracking::Relocalization()
 
     // Relocalization is performed when tracking is lost
     // Track Lost: Query KeyFrame Database for keyframe candidates for relocalisation
-    vector<KeyFrame*> vpCandidateKFs = mpKeyFrameDB->DetectRelocalizationCandidates(&mCurrentFrame, mpAtlas->GetCurrentMap());
+    Map* pCurrentMap = mpAtlas->GetCurrentMap();
+    vector<KeyFrame*> vpCandidateKFs;
+    if(pCurrentMap && pCurrentMap->KeyFramesInMap() > 0)
+        vpCandidateKFs = mpKeyFrameDB->DetectRelocalizationCandidates(&mCurrentFrame, pCurrentMap);
+
+    if(vpCandidateKFs.empty())
+        vpCandidateKFs = mpKeyFrameDB->DetectRelocalizationCandidates(&mCurrentFrame, nullptr);
 
     if(vpCandidateKFs.empty()) {
         Verbose::PrintMess("There are not candidates", Verbose::VERBOSITY_NORMAL);
@@ -3887,10 +3914,23 @@ bool Tracking::Relocalization()
                 if(nGood>=50)
                 {
                     bMatch = true;
+                    KeyFrame* pMatchedKF = vpCandidateKFs[i];
+                    if(pMatchedKF && pMatchedKF->GetMap() != mpAtlas->GetCurrentMap())
+                    {
+                        mpAtlas->ChangeMap(pMatchedKF->GetMap());
+                        mpLastKeyFrame = static_cast<KeyFrame*>(NULL);
+                    }
+                    mpReferenceKF = pMatchedKF;
+                    mCurrentFrame.mpReferenceKF = pMatchedKF;
                     break;
                 }
             }
         }
+    }
+
+    for(size_t sIdx = 0; sIdx < vpMLPnPsolvers.size(); ++sIdx) {
+        delete vpMLPnPsolvers[sIdx];
+        vpMLPnPsolvers[sIdx] = nullptr;
     }
 
     if(!bMatch)

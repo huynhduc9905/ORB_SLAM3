@@ -79,6 +79,7 @@ public:
 
     void CreateNewMap();
     void ChangeMap(Map* pMap);
+    void SetCurrentMap(Map* pMap);
 
     unsigned long int GetLastInitKFid();
 
@@ -159,6 +160,8 @@ protected:
     // Class references for the map reconstruction from the save file
     KeyFrameDatabase* mpKeyFrameDB;
     ORBVocabulary* mpORBVocabulary;
+
+    void CreateNewMapNoLock();
 
     // Mutex
     std::mutex mMutexAtlas;
