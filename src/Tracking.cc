@@ -3759,8 +3759,12 @@ bool Tracking::Relocalization()
     // Relocalization is performed when tracking is lost
     // Track Lost: Query KeyFrame Database for keyframe candidates for relocalisation
     Map* pCurrentMap = mpAtlas->GetCurrentMap();
-    Map* pQueryMap = (pCurrentMap && pCurrentMap->KeyFramesInMap() > 0) ? pCurrentMap : nullptr;
-    vector<KeyFrame*> vpCandidateKFs = mpKeyFrameDB->DetectRelocalizationCandidates(&mCurrentFrame, pQueryMap);
+    vector<KeyFrame*> vpCandidateKFs;
+    if(pCurrentMap && pCurrentMap->KeyFramesInMap() > 0)
+        vpCandidateKFs = mpKeyFrameDB->DetectRelocalizationCandidates(&mCurrentFrame, pCurrentMap);
+
+    if(vpCandidateKFs.empty())
+        vpCandidateKFs = mpKeyFrameDB->DetectRelocalizationCandidates(&mCurrentFrame, nullptr);
 
     if(vpCandidateKFs.empty()) {
         Verbose::PrintMess("There are not candidates", Verbose::VERBOSITY_NORMAL);
