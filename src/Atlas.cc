@@ -57,6 +57,12 @@ Atlas::~Atlas()
             ++it;
 
     }
+
+    for(Map* pBadMap : mspBadMaps)
+    {
+        delete pBadMap;
+    }
+    mspBadMaps.clear();
 }
 
 void Atlas::CreateNewMap()
@@ -334,6 +340,7 @@ void Atlas::PreSave()
             return elem1->GetId() < elem2->GetId();
         }
     };
+    mvpBackupMaps.clear();
     std::copy(mspMaps.begin(), mspMaps.end(), std::back_inserter(mvpBackupMaps));
     sort(mvpBackupMaps.begin(), mvpBackupMaps.end(), compFunctor());
 

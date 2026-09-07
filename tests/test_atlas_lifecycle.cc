@@ -32,6 +32,10 @@ public:
     void InsertMap(Map* pMap) {
         mspMaps.insert(pMap);
     }
+
+    void InsertBadMap(Map* pMap) {
+        mspBadMaps.insert(pMap);
+    }
 };
 
 class TestableKeyFrameDatabase : public KeyFrameDatabase {
@@ -51,6 +55,14 @@ public:
             mvInvertedFile.resize(minWords);
         }
     }
+};
+
+class TestableKeyFrame : public KeyFrame {
+public:
+    TestableKeyFrame() : KeyFrame() {}
+    KeyFrameDatabase* GetKeyFrameDB() const { return mpKeyFrameDB; }
+    ORBVocabulary* GetORBVocabulary() const { return mpORBvocabulary; }
+    Map* GetMapPtr() const { return mpMap; }
 };
 
 } // namespace
@@ -128,9 +140,17 @@ TEST(AtlasLifecycle, PreSaveSanitizesBackupMaps) {
         EXPECT_EQ(backupMaps[0], pGoodMap);
     }
 
+    // Repeated PreSave calls must not accumulate duplicate entries in mvpBackupMaps
+    atlas.PreSave();
+    EXPECT_EQ(atlas.GetBackupMaps().size(), 1u);
+    if (!atlas.GetBackupMaps().empty()) {
+        EXPECT_EQ(atlas.GetBackupMaps()[0], pGoodMap);
+    }
+
     delete pKF1;
     delete pKF2;
-    // Note: pGoodMap, pEmptyMap, and pBadMap are owned by atlas in mspMaps and cleaned up by Atlas::~Atlas()
+    delete pEmptyMap;
+    // Note: pGoodMap and pBadMap are owned by atlas in mspMaps and cleaned up by Atlas::~Atlas()
 }
 
 TEST(AtlasLifecycle, DetectRelocalizationCandidatesWithNullMapSearchesAll) {
@@ -274,4 +294,24 @@ TEST(AtlasLifecycle, AtlasPostLoadSelectsActiveMap) {
 
     delete pInitialMap;
 }
+
+TEST(AtlasLifecycle, DestructorCleansUpBadMaps) {
+    {
+        TestableAtlas atlas;
+        Map* pBadMap = new Map(300);
+        atlas.InsertBadMap(pBadMap);
+    }
+    // When atlas goes out of scope, Atlas::~Atlas() cleanly deletes pBadMap from mspBadMaps.
+}
+
+TEST(KeyFrameLifecycle, DefaultConstructorPointersInitialized) {
+    TestableKeyFrame kf;
+    EXPECT_EQ(kf.GetKeyFrameDB(), nullptr);
+    EXPECT_EQ(kf.GetORBVocabulary(), nullptr);
+    EXPECT_EQ(kf.GetMapPtr(), nullptr);
+    EXPECT_EQ(kf.mpCamera, nullptr);
+    EXPECT_EQ(kf.mpCamera2, nullptr);
+    EXPECT_EQ(kf.mpImuPreintegrated, nullptr);
+}
+
 

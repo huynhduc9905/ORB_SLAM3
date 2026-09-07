@@ -754,23 +754,6 @@ void System::ActivateLocalizationMode()
 {
     unique_lock<mutex> lock(mMutexMode);
     mbActivateLocalizationMode = true;
-    if(mpAtlas && mpAtlas->GetCurrentMap() && mpAtlas->GetCurrentMap()->KeyFramesInMap() == 0)
-    {
-        Map* pLargest = nullptr;
-        size_t maxKFs = 0;
-        for(Map* pMap : mpAtlas->GetAllMaps())
-        {
-            if(pMap && !pMap->IsBad() && pMap->GetAllKeyFrames().size() > maxKFs)
-            {
-                maxKFs = pMap->GetAllKeyFrames().size();
-                pLargest = pMap;
-            }
-        }
-        if(pLargest)
-        {
-            mpAtlas->ChangeMap(pLargest);
-        }
-    }
 }
 
 void System::DeactivateLocalizationMode()
