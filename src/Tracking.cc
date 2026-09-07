@@ -2122,6 +2122,13 @@ void Tracking::Track()
             }
         }
 
+        if(mpAtlas->GetCurrentMap() != pCurrentMap)
+        {
+            lock.unlock();
+            pCurrentMap = mpAtlas->GetCurrentMap();
+            lock = unique_lock<mutex>(pCurrentMap->mMutexMapUpdate);
+        }
+
         if(!mCurrentFrame.mpReferenceKF)
             mCurrentFrame.mpReferenceKF = mpReferenceKF;
 
