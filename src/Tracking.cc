@@ -2022,28 +2022,30 @@ void Tracking::Track()
                     if(mpAtlas->KeyFramesInMap() > 0)
                     {
                         bOK = Relocalization();
-                        if(bOK)
-                        {
-                            mState = OK;
-                            return;
-                        }
                     }
 
-                    Verbose::PrintMess("A new map is started...", Verbose::VERBOSITY_NORMAL);
-
-                    if (pCurrentMap->KeyFramesInMap()<10)
+                    if(bOK)
                     {
-                        mpSystem->ResetActiveMap();
-                        Verbose::PrintMess("Reseting current map...", Verbose::VERBOSITY_NORMAL);
-                    }else
-                        CreateMapInAtlas();
+                        mState = OK;
+                    }
+                    else
+                    {
+                        Verbose::PrintMess("A new map is started...", Verbose::VERBOSITY_NORMAL);
 
-                    if(mpLastKeyFrame)
-                        mpLastKeyFrame = static_cast<KeyFrame*>(NULL);
+                        if (pCurrentMap->KeyFramesInMap()<10)
+                        {
+                            mpSystem->ResetActiveMap();
+                            Verbose::PrintMess("Reseting current map...", Verbose::VERBOSITY_NORMAL);
+                        }else
+                            CreateMapInAtlas();
 
-                    Verbose::PrintMess("done", Verbose::VERBOSITY_NORMAL);
+                        if(mpLastKeyFrame)
+                            mpLastKeyFrame = static_cast<KeyFrame*>(NULL);
 
-                    return;
+                        Verbose::PrintMess("done", Verbose::VERBOSITY_NORMAL);
+
+                        return;
+                    }
                 }
             }
 
